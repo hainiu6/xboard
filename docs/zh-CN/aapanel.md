@@ -43,7 +43,7 @@ PHP_BIN=/www/server/php/82/bin/php bash init.sh
 在 aaPanel 网站设置中：
 
 1. 网站目录选择 `/www/wwwroot/panel.example.com`，运行目录选择 `/public`。
-2. PHP 版本选择与命令行相同的版本，关闭“防跨站攻击（open_basedir）”对 Laravel 父目录访问的限制，或在 PHP 配置中允许本网站根目录。
+2. PHP 版本选择与命令行相同的版本。如启用了 `open_basedir`，允许本网站根目录及临时目录，使 `/public` 下的入口能够读取本网站的 `vendor`、`storage` 等目录。
 3. 在该网站“伪静态”中填写以下规则，使用正常 PHP-FPM 模式，不配置反向代理：
 
 ```nginx
