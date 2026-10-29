@@ -30,6 +30,7 @@
     })();
   </script>
   <link rel="stylesheet" href="/assets/126/theme.css?v={{ filemtime(public_path('assets/126/theme.css')) }}" />
+  <link rel="stylesheet" href="/assets/126/home.css?v={{ filemtime(public_path('assets/126/home.css')) }}" />
   <script type="module" src="/assets/126/portal.js?v={{ filemtime(public_path('assets/126/portal.js')) }}"></script>
 </head>
 <body>

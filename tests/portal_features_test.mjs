@@ -10,8 +10,8 @@ const { createOrdersPage, filterOrders, orderStatus, orderPeriod }=await import(
 assert.equal(noticePage('/order/owned-trade'), 'order');
 assert.equal(noticePage('/node'), null);
 assert.equal(noticePage('/login'), null);
-assert.equal(noticeClasses('notice-card hidden fixed notice-card-header notice-card'), 'notice-card notice-card-header');
-assert.equal(noticeClasses('script arbitrary-class'), '');
+assert.equal(noticeClasses('my-banner compact my-banner'), 'my-banner compact');
+assert.equal(noticeClasses(''), '');
 const node=(type,props={},children=[])=>({type,props,children});
 const walk=item=>Array.isArray(item)?item.flatMap(walk):item&&typeof item==='object'?[item,...(Array.isArray(item.children)?item.children.flatMap(walk):[])]:[];
 const has=(item,value)=>Array.isArray(item.props?.class)?item.props.class.includes(value):item.props?.class===value;

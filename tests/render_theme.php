@@ -34,7 +34,7 @@ try {
         'theme_config' => [],
     ];
     $html = $factory->make('theme::Xboard.dashboard', $data)->render();
-    foreach (['id="site-home"', 'id="auth-story"', 'id="app"', 'href="/#/login"', 'href="/#/register"', '/assets/126/theme.css?v='] as $required) {
+    foreach (['id="site-home"', 'id="auth-story"', 'id="app"', 'href="/#/login"', 'href="/#/register"', '/assets/126/theme.css?v=', '/assets/126/home.css?v=', 'class="hn-hero hn-container"'] as $required) {
         if (!str_contains($html, $required)) {
             throw new RuntimeException('Missing rendered element: ' . $required);
         }

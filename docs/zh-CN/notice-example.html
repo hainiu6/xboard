@@ -1,3 +1,18 @@
+<style>
+.notice-card{font-family:system-ui,"PingFang SC","Microsoft YaHei",sans-serif;color:#26374f;background:#fff;border:1px solid #c6d8f2;border-radius:14px;overflow:hidden;box-shadow:0 7px 24px #1c3c6510}
+.notice-card-header{display:flex;align-items:center;gap:17px;padding:24px 27px;background:linear-gradient(115deg,#153c70,#24589a);color:#fff}
+.notice-card-icon{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:48px;height:48px;border:1px solid #ffffff40;border-radius:11px;background:#ffffff13;font-size:27px;line-height:1;color:#ffda9a}
+.notice-card-heading{display:flex;align-items:center;flex-wrap:wrap;gap:9px 12px;min-width:0}
+.notice-card-heading h3{margin:0;color:#fff;font-size:24px;line-height:1.5;font-weight:750}
+.notice-card-badge{padding:3px 10px;border-radius:5px;background:#ffd69a;color:#704313;font-size:12px;font-weight:750}
+.notice-card-subtitle{flex-basis:100%;margin:0;color:#d5e4fa;font-size:13px;line-height:1.75}
+.notice-card-body{padding:24px 27px 22px;font-size:15px;line-height:1.85}
+.notice-card-row{display:grid;grid-template-columns:86px minmax(0,1fr);gap:15px;margin-bottom:20px;align-items:start}
+.notice-card-row p{margin:0}.notice-card-label{border-left:3px solid #1b5db5;padding-left:10px;color:#1b4e91;font-weight:750;white-space:nowrap}
+.notice-card-alert{color:#b7421e;font-weight:750}.notice-card-advice{padding:17px 18px;border-radius:10px;background:#edf4ff}.notice-card-advice .notice-card-label{border-color:#e68b21}.notice-card-advice strong,.notice-card-advice a{color:#174b8e;font-weight:750}
+.notice-card-footer{padding-top:18px;border-top:1px solid #e2eaf5;color:#536177;font-size:13px;line-height:1.9}
+@media(max-width:600px){.notice-card-header{padding:19px 17px;gap:12px;align-items:flex-start}.notice-card-icon{width:35px;height:38px;font-size:22px}.notice-card-heading h3{font-size:20px}.notice-card-body{padding:19px 17px;font-size:14px}.notice-card-row{grid-template-columns:1fr;gap:8px}.notice-card-advice{padding:14px}}
+</style>
 <div class="notice-card">
   <div class="notice-card-header">
     <span class="notice-card-icon">⚠</span>
