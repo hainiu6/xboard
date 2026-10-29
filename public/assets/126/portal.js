@@ -46,7 +46,27 @@ window.addEventListener('popstate', syncSurface);
 // Vue Router also changes hashes through pushState, which emits no hashchange.
 // Observe rendered route changes without patching history or the compiled bundle.
 let observedHash = location.hash;
+let observedMain, observedCheckout;
+function updateCheckoutBounds() {
+  if (observedMain) root.style.setProperty('--purchase-left', `${Math.max(0, observedMain.getBoundingClientRect().left)}px`);
+  if (observedCheckout) root.style.setProperty('--purchase-checkout-height', `${observedCheckout.getBoundingClientRect().height}px`);
+}
+const layoutObserver = new ResizeObserver(updateCheckoutBounds);
+function syncPortalLayout() {
+  const main = document.querySelector('.portal-app-main');
+  const checkout = document.querySelector('.purchase-checkout');
+  if (main !== observedMain || checkout !== observedCheckout) {
+    layoutObserver.disconnect();
+    observedMain = main; observedCheckout = checkout;
+    if (main) layoutObserver.observe(main);
+    if (checkout) layoutObserver.observe(checkout);
+  }
+  updateCheckoutBounds();
+}
+window.addEventListener('resize', updateCheckoutBounds);
+
 new MutationObserver(() => {
+  syncPortalLayout();
   if (location.hash === observedHash) return;
   observedHash = location.hash;
   syncSurface();

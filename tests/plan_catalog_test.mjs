@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 
 const source = await readFile(new URL('../public/assets/126/plan-catalog.js', import.meta.url), 'utf8');
-const { planOptions, money, planFeatures, selectionFor, createPlansPage, couponDiscount, paymentFee, paymentTarget } = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
+const { planOptions, money, planFeatures, selectionFor, createPlansPage, displayFeatures, couponDiscount, paymentFee, paymentTarget } = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
 const plan = { id: 7, name: '测试套餐', month_price: 2500, quarter_price: 6000, year_price: 18000, two_year_price: 24000, reset_price: 1200, onetime_price: null };
 const annual = planOptions(plan).find(item => item.key === 'year_price');
 assert.equal(annual.cents, 18000);
@@ -45,7 +45,7 @@ async function harness(overrides = {}) {
   const api={
     async get(url) {
       calls.push(['GET',url]);
-      if(url==='/user/plan/fetch')return {data:[plan]};
+      if(url==='/user/plan/fetch')return {data:state.plans||[plan]};
       if(url==='/user/order/getPaymentMethod')return {data:state.methods};
       if(url==='/user/order/fetch')return {data:state.orders};
       if(url.startsWith('/user/order/detail')) {
@@ -127,6 +127,50 @@ await run('An invalid cashier URL is rejected',async()=>{
 await run('QR checkout renders a modal on the catalog and stops polling on unmount',async()=>{
  const h=await harness({payment:{type:0,data:'weixin://preview-only'}});h.choose();await h.payButton().props.onClick();assert.ok(h.nodes().some(item=>item.type==='modal'));assert.deepEqual(h.navigations,[]);h.dispose();
 });
+const catalogPlans = [1, 2, 3, 4].map((tier) => ({ ...plan, id: tier, name: `V${tier}测试套餐`, year_price: tier * 12000, two_year_price: tier * 18000 }));
+const hasClass = (item, value) => Array.isArray(item.props?.class) ? item.props.class.includes(value) : item.props?.class === value;
+await run('V3 annual is selected by default using server plan IDs and prices', async () => {
+ const h=await harness({plans:catalogPlans});
+ const cards=h.nodes().filter(item=>hasClass(item,'purchase-card'));
+ assert.equal(cards.filter(item=>hasClass(item,'is-selected')).length,1);
+ assert.equal(cards.find(item=>hasClass(item,'is-selected')).props.key,3);
+ assert.ok(JSON.stringify(h.nodes().find(item=>hasClass(item,'purchase-summary'))).includes('一年方案'));
+ assert.equal(h.payButton().props.disabled,false); h.dispose();
+});
+await run('Switching the period synchronizes every card price and selecting another plan keeps that period', async () => {
+ const h=await harness({plans:catalogPlans});
+ const cards=()=>h.nodes().filter(item=>hasClass(item,'purchase-card'));
+ const period=(card,label)=>walk(card).find(item=>item.type==='button' && item.children?.some?.(child=>child?.props?.class==='purchase-period-main'&&JSON.stringify(child).includes(label)));
+ period(cards()[1],'两年').props.onClick();
+ for (let i=0;i<4;i++) {
+   const card=cards()[i];
+   assert.equal(period(card,'两年').props['aria-pressed'],true);
+   assert.equal(period(card,'一年').props['aria-pressed'],false);
+   const price=walk(card).find(item=>hasClass(item,'purchase-price'));
+   assert.ok(JSON.stringify(price).includes(money(catalogPlans[i].two_year_price/24)));
+ }
+ walk(cards()[3]).find(item=>item.type==='button' && hasClass(item,'purchase-card-title')).props.onClick();
+ assert.ok(JSON.stringify(h.nodes().find(item=>hasClass(item,'purchase-summary'))).includes('V4测试套餐 · 两年方案'));
+ h.dispose();
+});
+await run('A missing shared period is shown as unavailable rather than displaying another price', async () => {
+ const h=await harness({plans:[catalogPlans[0], {...catalogPlans[2],two_year_price:null}]});
+ const cards=()=>h.nodes().filter(item=>hasClass(item,'purchase-card'));
+ walk(cards()[0]).find(item=>item.type==='button' && item.children?.some?.(child=>child?.props?.class==='purchase-period-main'&&JSON.stringify(child).includes('两年'))).props.onClick();
+ assert.ok(JSON.stringify(cards()[1]).includes('暂不提供此周期'));
+ assert.equal(walk(cards()[1]).find(item=>item.type==='button'&&hasClass(item,'purchase-card-title')).props.disabled,true);h.dispose();
+});
+await run('Cycle changes clear coupon eligibility and do not alter a created order', async () => {
+ const h=await harness({plans:catalogPlans,total:36000});
+ h.couponInput('SAVE10');await h.validateCoupon();
+ const card=()=>h.nodes().find(item=>hasClass(item,'purchase-card')&&item.props.key===3);
+ const period=()=>walk(card()).find(item=>item.type==='button'&&item.children?.some?.(child=>child?.props?.class==='purchase-period-main'&&JSON.stringify(child).includes('两年')));
+ period().props.onClick();assert.ok(!JSON.stringify(h.nodes()).includes('已生效'));
+ h.couponInput('');await h.payButton().props.onClick();
+ assert.equal(h.calls.find(call=>call[1]==='/user/order/save')[2].period,'two_year_price');
+ assert.equal(period().props.disabled,true);h.dispose();
+});
+assert.deepEqual(displayFeatures({content:'速度：10Mbps\n设备：支持 2 个设备在线\nIP人数：100人共享'}).map(item=>item.text),['100人共享','10M 连接速度','2台设备同时在线']);
 const bundle=await readFile(new URL('../theme/Xboard/assets/umi.js',import.meta.url),'utf8');
 assert.ok(bundle.includes('/*126_PLAN_CATALOG*/'));
 execFileSync('python3',['scripts/build-user-theme.py'],{cwd:new URL('..',import.meta.url),stdio:'pipe'});

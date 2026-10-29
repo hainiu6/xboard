@@ -44,6 +44,25 @@ export function planFeatures(plan) {
   return fallback.map(text => ({ text, supported: true }));
 }
 
+
+export function planPresentation(plan) {
+  const tier = String(plan.name || '').match(/^V([1-4])(?:\D|$)/i)?.[1];
+  const subtitles = {
+    1: '入门体验·支持AI·轻量使用。',
+    2: '多场景稳定·减少AI风控降智·1080P',
+    3: 'AI工作主力·进一步减少风控降智·4K',
+    4: '独享·原生IP·双ISP·家宽·可定制',
+  };
+  return { subtitle: subtitles[tier] || '', recommended: tier === '3' };
+}
+export function displayFeatures(plan) {
+  return planFeatures(plan).map(feature => ({ ...feature, text: feature.text
+    .replace(/^速度[：:]\s*([\d.]+)\s*Mbps/i, '$1M 连接速度')
+    .replace(/^流量[：:]\s*/, '').replace(/^设备[：:]\s*支持\s*(\d+)\s*个?设备在线/, '$1台设备同时在线')
+    .replace(/^(IP人数|线路质量|IP质量|调度)[：:]\s*/i, '')
+  })).sort((a, b) => Number(/人共享|独占资源|独享/.test(b.text)) - Number(/人共享|独占资源|独享/.test(a.text)));
+}
+
 export function selectionFor(plan, key) {
   const option = planOptions(plan).find(item => item.key === key);
   return option ? { plan, option } : null;
@@ -69,7 +88,7 @@ export function createPlansPage({ h, ref, onMounted, onUnmounted, Layout, QRCode
     name: '126PlanCatalog',
     setup() {
       const plans = ref([]), methods = ref([]), methodId = ref(null), selected = ref(null);
-      const loading = ref(true), error = ref(''), filter = ref('all'), busy = ref(false);
+      const loading = ref(true), error = ref(''), busy = ref(false), displayPeriod = ref('year_price');
       const couponInput = ref(''), coupon = ref(null), couponBusy = ref(false), couponError = ref('');
       const paymentError = ref(''), pending = ref(null), order = ref(null), qrValue = ref(''), completed = ref(false);
       let timer;
@@ -103,6 +122,10 @@ export function createPlansPage({ h, ref, onMounted, onUnmounted, Layout, QRCode
           methods.value = methodResponse.data;
           methodId.value = methods.value[0]?.id ?? null;
           pending.value = orderResponse.data.find(item => [0, 1].includes(Number(item.status))) || null;
+          if (!selected.value) {
+            const preferred = plans.value.find(plan => planPresentation(plan).recommended && selectionFor(plan, 'year_price'));
+            if (preferred) selected.value = selectionFor(preferred, 'year_price');
+          }
         } catch (failure) { error.value = failure.message || '加载失败，请检查网络后重试。'; }
         finally { loading.value = false; }
       };
@@ -110,7 +133,7 @@ export function createPlansPage({ h, ref, onMounted, onUnmounted, Layout, QRCode
       const clearCoupon = () => { coupon.value = null; couponError.value = ''; };
       const choose = (plan, key) => {
         if (busy.value || hasOrder() || completed.value) return;
-        selected.value = selectionFor(plan, key); clearCoupon(); paymentError.value = '';
+        selected.value = selectionFor(plan, key); displayPeriod.value = key; clearCoupon(); paymentError.value = '';
       };
       const validateCoupon = async () => {
         if (!selected.value || !couponInput.value.trim() || hasOrder()) return false;
@@ -148,7 +171,7 @@ export function createPlansPage({ h, ref, onMounted, onUnmounted, Layout, QRCode
           const plan = order.value.plan;
           const option = planOptions(plan).find(item => item.key === order.value.period)
             || { key: order.value.period, label: periods.find(item => item[0] === order.value.period)?.[1] || '原订单周期', cents: Number(order.value.total_amount), months: null, saving: 0 };
-          selected.value = { plan, option };
+          selected.value = { plan, option }; displayPeriod.value = option.key;
           clearCoupon(); couponInput.value = '';
         } catch (failure) { paymentError.value = failure.message; }
         finally { busy.value = false; }
@@ -205,18 +228,19 @@ export function createPlansPage({ h, ref, onMounted, onUnmounted, Layout, QRCode
         finally { busy.value = false; }
       };
       const renderCard = plan => {
-        const options = planOptions(plan).filter(option => filter.value === 'all' || (filter.value === 'recurring' ? option.months !== null : option.months === null));
+        const options = planOptions(plan);
         if (!options.length) return null;
         const active = selected.value && String(selected.value.plan.id) === String(plan.id);
-        const preferred = options.find(option => active && option.key === selected.value.option.key) || options.find(option => option.key === 'year_price') || options.find(option => option.key === 'month_price') || options[0];
+        const preferred = options.find(option => option.key === displayPeriod.value);
+        const presentation = planPresentation(plan);
         return h('article', { class: ['purchase-card', active && 'is-selected'], key: plan.id }, [
-          h('div', { class: 'purchase-card-title' }, [h('h2', {}, String(plan.name || '订阅套餐')), active ? h('span', { class: 'purchase-selected-tag' }, '已选择') : null]),
-          Array.isArray(plan.tags) ? h('div', { class: 'purchase-tags' }, plan.tags.filter(tag => typeof tag === 'string').map(tag => h('span', {}, tag))) : null,
-          h('div', { class: 'purchase-price' }, [h('span', { class: 'purchase-currency' }, symbol()), h('strong', {}, money(preferred.monthlyCents ?? preferred.cents)), h('span', {}, preferred.months ? '/ 月' : '/ 次')]),
-          h('p', { class: 'purchase-price-caption' }, preferred.months ? `按${preferred.label}方案折算 · 合计 ${price(preferred.cents)}` : '一次性购买 · 有效规则见套餐说明'),
-          h('ul', { class: 'purchase-features' }, planFeatures(plan).map(feature => h('li', { class: !feature.supported && 'is-unsupported' }, [h('span', { class: 'purchase-check', 'aria-hidden': 'true' }, feature.supported ? '✓' : '−'), h('span', {}, feature.text)]))),
+          h('button', { type: 'button', class: 'purchase-card-title', 'aria-label': `选择${plan.name}`, 'aria-pressed': Boolean(active), disabled: !preferred || busy.value || hasOrder() || completed.value, onClick: () => choose(plan, preferred.key) }, [h('span', { class: ['purchase-card-radio', active && 'is-checked'], 'aria-hidden': 'true' }, active ? '✓' : ''), h('h2', {}, String(plan.name || '订阅套餐')), presentation.recommended ? h('span', { class: 'purchase-recommended' }, '推荐') : null]),
+          h('p', { class: 'purchase-card-subtitle' }, presentation.subtitle),
+          h('div', { class: 'purchase-price' }, preferred ? [h('span', { class: 'purchase-currency' }, symbol()), h('strong', {}, money(preferred.monthlyCents ?? preferred.cents)), h('span', {}, preferred.months ? '元/月' : '元/次')] : [h('span', { class: 'purchase-unavailable' }, '暂不提供此周期')]),
+          h('p', { class: 'purchase-price-caption' }, preferred ? `${preferred.label}合计 ${price(preferred.cents)}` : '可选择下方其他购买周期'),
+          h('ul', { class: 'purchase-features' }, displayFeatures(plan).map(feature => h('li', { class: !feature.supported && 'is-unsupported' }, [h('span', { class: 'purchase-check', 'aria-hidden': 'true' }, feature.supported ? '✓' : '−'), h('span', {}, feature.text)]))),
           h('div', { class: 'purchase-periods', role: 'group', 'aria-label': `${plan.name} 购买周期` }, options.map(option => {
-            const checked = active && option.key === selected.value.option.key;
+            const checked = option.key === displayPeriod.value;
             return h('button', { type: 'button', class: ['purchase-period', checked && 'is-selected'], disabled: busy.value || hasOrder() || completed.value,
               'aria-pressed': Boolean(checked), onClick: () => choose(plan, option.key) }, [
               h('span', { class: 'purchase-period-main' }, [h('span', { class: 'purchase-period-label' }, [h('strong', {}, option.label), option.savingPercent > 0 ? h('em', {}, `省 ${option.savingPercent}%`) : null]), h('small', {}, `合计 ${price(option.cents)}`)]),
@@ -226,11 +250,10 @@ export function createPlansPage({ h, ref, onMounted, onUnmounted, Layout, QRCode
         ]);
       };
       return () => h(Layout, { 'show-footer': false }, { default: () => [h('section', { class: 'purchase-page', 'aria-labelledby': 'purchase-title' }, [
-        h('header', { class: 'purchase-heading' }, [h('div', {}, [h('p', { class: 'purchase-kicker' }, '126 / SUBSCRIPTIONS'), h('h1', { id: 'purchase-title' }, '选择适合你的连接方案'), h('p', { class: 'purchase-intro' }, '选择套餐与周期，使用优惠券，在当前页直接发起付款。')]), h('span', { class: 'purchase-flow-label' }, '选择套餐 → 优惠抵扣 → 立即付款')]),
-        h('div', { class: 'purchase-toolbar' }, [h('div', { class: 'purchase-filters', role: 'group', 'aria-label': '套餐类型' }, [['all', '全部套餐'], ['recurring', '周期订阅'], ['onetime', '一次性套餐']].map(([value, label]) => h('button', { type: 'button', disabled: busy.value || hasOrder(), class: filter.value === value && 'is-active', 'aria-pressed': filter.value === value, onClick: () => { filter.value = value; if (selected.value && value !== 'all' && (value === 'recurring') !== (selected.value.option.months !== null)) { selected.value = null; clearCoupon(); } } }, label))), h('span', {}, '套餐和周期按后台实时展示')]),
+        h('header', { class: 'purchase-heading' }, [h('h1', { id: 'purchase-title' }, '你的购买，将帮助一名贫困学生重返校园')]),
         pending.value && !hasOrder() ? h('div', { class: 'purchase-alert' }, [h('p', {}, Number(pending.value.status) === 1 ? '已有订单正在处理，请等待开通。' : `你有待支付订单：${pending.value.plan?.name || pending.value.trade_no}`), Number(pending.value.status) === 0 ? h('div', {}, [h('button', { type: 'button', disabled: busy.value, onClick: resumeOrder }, '继续支付此订单'), h('button', { type: 'button', disabled: busy.value, onClick: cancelCurrent }, '取消此订单')]) : null]) : null,
         loading.value ? h('div', { class: 'purchase-state', role: 'status' }, '正在加载套餐…') : error.value ? h('div', { class: 'purchase-state', role: 'alert' }, [h('p', {}, error.value), h('button', { type: 'button', onClick: load }, '重新加载')]) : h('div', { class: 'purchase-grid' }, plans.value.map(renderCard).filter(Boolean)),
-        !loading.value && !error.value && !plans.value.some(plan => planOptions(plan).some(option => filter.value === 'all' || (filter.value === 'recurring' ? option.months !== null : option.months === null))) ? h('div', { class: 'purchase-state' }, '暂无此类型的可购买套餐，请稍后再来。') : null,
+        !loading.value && !error.value && !plans.value.length ? h('div', { class: 'purchase-state' }, '暂无可购买套餐，请稍后再来。') : null,
         !loading.value && !error.value ? h('div', { class: 'purchase-settings' }, [
           h('section', { class: 'purchase-method-panel', 'aria-labelledby': 'purchase-method-title' }, [h('h2', { id: 'purchase-method-title' }, '选择支付方式'), h('div', { class: 'purchase-methods', role: 'group', 'aria-label': '支付方式' }, methods.value.map(method => h('button', { type: 'button', disabled: busy.value || completed.value, 'aria-pressed': String(methodId.value) === String(method.id), class: ['purchase-method', String(methodId.value) === String(method.id) && 'is-selected'], onClick: () => { methodId.value = method.id; paymentError.value = ''; } }, [h('span', { class: 'purchase-method-icon' }, String(method.name || '支付').includes('微信') ? '微' : '支'), h('span', {}, [h('strong', {}, method.name), h('small', {}, Number(method.handling_fee_fixed) || Number(method.handling_fee_percent) ? `手续费：${price(Number(method.handling_fee_fixed) || 0)} + ${Number(method.handling_fee_percent) || 0}%` : '无需支付手续费')]), h('span', { class: 'purchase-method-check', 'aria-hidden': 'true' }, String(methodId.value) === String(method.id) ? '✓' : '○')]))), !methods.value.length ? h('p', {}, '暂无在线支付方式；若优惠或余额全额抵扣，可直接完成订单。') : null]),
           h('section', { class: 'purchase-coupon-panel', 'aria-labelledby': 'purchase-coupon-title' }, [h('h2', { id: 'purchase-coupon-title' }, '优惠抵扣'), h('p', {}, hasOrder() ? '订单已创建，金额以服务器核算结果为准。' : '输入优惠券，账户余额将在下单时自动抵扣。'), h('div', { class: 'purchase-coupon-input' }, [h('input', { 'aria-label': '优惠券代码', placeholder: '输入优惠券代码', value: couponInput.value, disabled: busy.value || hasOrder() || completed.value, onInput: event => { couponInput.value = event.target.value; clearCoupon(); } }), h('button', { type: 'button', disabled: !selected.value || !couponInput.value.trim() || couponBusy.value || busy.value || hasOrder(), onClick: validateCoupon }, couponBusy.value ? '校验中…' : '使用优惠券')]), coupon.value ? h('p', { class: 'purchase-coupon-success', role: 'status' }, `${coupon.value.name || '优惠券'} 已生效，预计减免 ${price(couponDiscount(selected.value?.option.cents || 0, coupon.value))}`) : null, couponError.value ? h('p', { class: 'purchase-inline-error', role: 'alert' }, couponError.value) : null]),

@@ -18,5 +18,13 @@ else:
 if count != 1:
     raise SystemExit('Cannot locate the plan catalog component. Review the upstream frontend before building.')
 source = re.sub(r';/\*126_SELECTED_PERIOD\*/.*?/\*126_END_PERIOD\*/', '', source)
+# Keep the homepage action in the existing application toolbar.
+header_original = 'Ir("div",jj,[Lr($j),Lr(Oj),Lr(xj),Lr(Aj)])'
+header_replacement = 'Ir("div",jj,[/*126_HOME_LINK*/Ir("a",{href:"/",class:"portal-home-button"},"返回首页"),/*126_END_HOME*/Lr($j),Lr(Oj),Lr(xj),Lr(Aj)])'
+if '/*126_HOME_LINK*/' not in source:
+    if source.count(header_original) != 1:
+        raise SystemExit('Cannot locate the application toolbar. Review the upstream frontend.')
+    source = source.replace(header_original, header_replacement)
+source = source.replace('Wj={class:"flex flex-col flex-1 overflow-hidden"}', 'Wj={class:"portal-app-main flex flex-col flex-1 overflow-hidden"}')
 bundle.write_text(source)
 print('126 plan catalog bridge is ready.')
