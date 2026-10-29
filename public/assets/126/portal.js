@@ -36,4 +36,13 @@ async function syncSurface() {
 }
 
 window.addEventListener('hashchange', syncSurface);
+window.addEventListener('popstate', syncSurface);
+// Vue Router also changes hashes through pushState, which emits no hashchange.
+// Observe rendered route changes without patching history or the compiled bundle.
+let observedHash = location.hash;
+new MutationObserver(() => {
+  if (location.hash === observedHash) return;
+  observedHash = location.hash;
+  syncSurface();
+}).observe(document.getElementById('app'), { childList: true, subtree: true });
 syncSurface();
