@@ -1,5 +1,12 @@
 # Xboard
 
+本仓库：**[hainiu6/xboard](https://github.com/hainiu6/xboard)**，用于本地修改及 aaPanel 原生部署。
+
+- **[中文 aaPanel 安装与更新指南](docs/zh-CN/aapanel.md)**（Nginx + PHP-FPM + MySQL + Redis）
+- 首次安装：`bash init.sh`；后续更新：`bash update.sh`（从本仓库 `main` 拉取）
+- 保留上游 MIT 许可及源码历史；上游仓库为 [cedar2025/Xboard](https://github.com/cedar2025/Xboard)。
+- 本仓库不自动构建 Docker 镜像；下方为保留的上游说明，Docker 命令不属于本仓库的 aaPanel 部署流程。
+
 <div align="center">
 
 [![Telegram](https://img.shields.io/badge/Telegram-Channel-blue)](https://t.me/XboardOfficial)

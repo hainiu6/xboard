@@ -1,3 +1,9 @@
+# This repository uses a maintained native aaPanel deployment guide
+
+See [the Chinese aaPanel guide](../../zh-CN/aapanel.md) for this repository. Use `bash init.sh` to install and `bash update.sh` to update `hainiu6/xboard` on `main`.
+
+The upstream instructions below are retained as reference; do not use their hard-reset commands on this repository.
+
 # Xboard Deployment Guide for aaPanel Environment
 
 ## Table of Contents

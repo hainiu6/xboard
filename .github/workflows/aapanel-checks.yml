@@ -1,0 +1,19 @@
+name: aaPanel deployment checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  deployment:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shell syntax
+        run: bash -n init.sh update.sh scripts/aapanel.sh
+      - name: PHP syntax
+        run: php -l scripts/backup-mysql.php
+      - name: Isolated deployment flow
+        run: python3 tests/aapanel_deploy_test.py
