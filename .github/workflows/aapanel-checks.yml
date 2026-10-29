@@ -26,3 +26,5 @@ jobs:
         run: composer install --no-dev --no-scripts --no-interaction --prefer-dist
       - name: Render Blade theme
         run: php tests/render_theme.php
+      - name: Publish default and custom frontend assets
+        run: php tests/refresh_theme.php

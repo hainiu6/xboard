@@ -367,23 +367,21 @@ class ThemeService
     public function refreshCurrentTheme(): bool
     {
         try {
-            $currentTheme = admin_setting('current_theme');
-            if (!$currentTheme) {
-                return false;
-            }
-
-            $this->cleanupThemeFiles($currentTheme);
-
+            // Match the frontend route, including fresh installs without current_theme.
+            $currentTheme = admin_setting('frontend_theme', 'Xboard') ?: 'Xboard';
             $themePath = $this->getThemePath($currentTheme);
             if (!$themePath) {
                 throw new Exception('Current theme path not found');
             }
+
+            $this->cleanupThemeFiles($currentTheme);
 
             $targetPath = public_path('theme/' . $currentTheme);
             if (!File::copyDirectory($themePath, $targetPath)) {
                 throw new Exception('Failed to copy theme files');
             }
 
+            admin_setting(['current_theme' => $currentTheme]);
             Log::info('Refreshed current theme files', ['theme' => $currentTheme]);
             return true;
 
