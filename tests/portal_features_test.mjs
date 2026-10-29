@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { runInNewContext } from 'node:vm';
 const moduleFrom = async name => import(`data:text/javascript;base64,${Buffer.from(await readFile(new URL(`../public/assets/126/${name}.js`,import.meta.url),'utf8')).toString('base64')}`);
-const { noticePage, createNotice } = await moduleFrom('notices');
+const { noticePage, createNotice, noticeClasses } = await moduleFrom('notices');
 const { noticePageField } = await moduleFrom('admin-notice');
 // Rewrite only the relative import when testing the maintained module from a data URL.
 const ordersSource=(await readFile(new URL('../public/assets/126/orders.js',import.meta.url),'utf8')).replace("'./plan-catalog.js'", JSON.stringify(`data:text/javascript;base64,${Buffer.from(await readFile(new URL('../public/assets/126/plan-catalog.js',import.meta.url),'utf8')).toString('base64')}`));
@@ -10,6 +10,8 @@ const { createOrdersPage, filterOrders, orderStatus, orderPeriod }=await import(
 assert.equal(noticePage('/order/owned-trade'), 'order');
 assert.equal(noticePage('/node'), null);
 assert.equal(noticePage('/login'), null);
+assert.equal(noticeClasses('notice-card hidden fixed notice-card-header notice-card'), 'notice-card notice-card-header');
+assert.equal(noticeClasses('script arbitrary-class'), '');
 const node=(type,props={},children=[])=>({type,props,children});
 const walk=item=>Array.isArray(item)?item.flatMap(walk):item&&typeof item==='object'?[item,...(Array.isArray(item.children)?item.children.flatMap(walk):[])]:[];
 const has=(item,value)=>Array.isArray(item.props?.class)?item.props.class.includes(value):item.props?.class===value;

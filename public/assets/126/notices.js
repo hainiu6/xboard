@@ -4,14 +4,23 @@ export function noticePage(path) {
   return pages.has(page) ? page : null;
 }
 
+// Only these presentation classes can survive announcement sanitization.
+const cardClasses = new Set(['notice-card', 'notice-card-header', 'notice-card-icon', 'notice-card-heading', 'notice-card-badge', 'notice-card-subtitle', 'notice-card-body', 'notice-card-row', 'notice-card-label', 'notice-card-advice', 'notice-card-alert', 'notice-card-footer']);
+export function noticeClasses(value) {
+  return [...new Set(String(value || '').split(/\s+/).filter(name => cardClasses.has(name)))].join(' ');
+}
+
 export function safeNoticeHtml(html) {
   const doc = new DOMParser().parseFromString(String(html), 'text/html');
   const allowed = new Set(['P','BR','HR','H1','H2','H3','H4','H5','H6','STRONG','B','EM','I','U','S','DEL','UL','OL','LI','BLOCKQUOTE','PRE','CODE','A','IMG','TABLE','THEAD','TBODY','TR','TH','TD','DIV','SPAN']);
   for (const element of [...doc.body.querySelectorAll('*')]) {
     if (!allowed.has(element.tagName)) { element.remove(); continue; }
     for (const attribute of [...element.attributes]) {
-      if (!['href','src','alt','title'].includes(attribute.name) || (attribute.name === 'href' && element.tagName !== 'A') || (attribute.name === 'src' && element.tagName !== 'IMG')) element.removeAttribute(attribute.name);
+      if (!['href','src','alt','title','class'].includes(attribute.name) || (attribute.name === 'href' && element.tagName !== 'A') || (attribute.name === 'src' && element.tagName !== 'IMG')) element.removeAttribute(attribute.name);
     }
+    const classes = noticeClasses(element.getAttribute('class'));
+    if (classes) element.setAttribute('class', classes);
+    else element.removeAttribute('class');
     for (const attribute of ['href','src']) {
       if (!element.hasAttribute(attribute)) continue;
       try {
