@@ -73,7 +73,7 @@ async function harness(overrides = {}) {
       throw new Error(url);
     }
   };
-  const page=createPlansPage({h:node,ref:value=>({value}),onMounted:callback=>{mounted=callback;},onUnmounted:callback=>cleanups.push(callback),Layout:'layout',QRCode:'qr',Modal:'modal',api,getConfig:()=>({currency_symbol:'¥'}),getUser:()=>state.user,confirm:async()=>state.confirm!==false,openPayment:url=>redirects.push(url),navigate:url=>navigations.push(url)});
+  const page=createPlansPage({h:node,ref:value=>({value}),onMounted:callback=>{mounted=callback;},onUnmounted:callback=>cleanups.push(callback),Layout:'layout',QRCode:'qr',Modal:'modal',api,getConfig:()=>({currency_symbol:'¥'}),getUser:()=>state.user,confirm:async()=>state.confirm!==false,openPayment:url=>redirects.push(url),navigate:url=>navigations.push(url),getRequestedOrder:()=>state.requestedOrder});
   const render=page.setup(); await mounted();
   const nodes=()=>walk(render().children.default()[0]);
   const payButton=()=>nodes().find(item=>item.props.class==='purchase-checkout-action').children.find(item=>item.type==='button');
@@ -172,6 +172,13 @@ await run('Cycle changes clear coupon eligibility and do not alter a created ord
  assert.equal(period().props.disabled,true);h.dispose();
 });
 assert.deepEqual(displayFeatures({content:'速度：10Mbps\n设备：支持 2 个设备在线\nIP人数：100人共享'}).map(item=>item.text),['100人共享','10M 连接速度','2台设备同时在线']);
+await run('Order-history handoff resumes only a matching owned pending order without creating a new one',async()=>{
+ const h=await harness({requestedOrder:'test-order',orders:[{trade_no:'test-order',plan,period:'year_price',status:0}]});
+ assert.ok(JSON.stringify(h.nodes()).includes('已创建待支付订单'));
+ await h.payButton().props.onClick();assert.equal(count(h,'/user/order/save'),0);assert.equal(count(h,'/user/order/checkout'),1);h.dispose();
+ const other=await harness({requestedOrder:'someone-else',orders:[{trade_no:'test-order',plan,period:'year_price',status:0}]});
+ assert.equal(other.calls.filter(call=>call[1].startsWith('/user/order/detail')).length,0);other.dispose();
+});
 const bundle=await readFile(new URL('../theme/Xboard/assets/umi.js',import.meta.url),'utf8');
 assert.ok(bundle.includes('/*126_PLAN_CATALOG*/'));
 execFileSync('python3',['scripts/build-user-theme.py'],{cwd:new URL('..',import.meta.url),stdio:'pipe'});

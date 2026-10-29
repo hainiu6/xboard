@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: Shell syntax
         run: bash -n init.sh update.sh scripts/aapanel.sh
       - name: PHP syntax
@@ -22,9 +24,15 @@ jobs:
         run: node --check public/assets/126/portal.js
       - name: Plan catalog calculation and navigation
         run: node tests/plan_catalog_test.mjs
+      - name: Order history, notices and login persistence
+        run: node tests/portal_features_test.mjs
       - name: Install view rendering dependencies
         run: composer install --no-dev --no-scripts --no-interaction --prefer-dist
       - name: Render Blade theme
         run: php tests/render_theme.php
       - name: Publish default and custom frontend assets
         run: php tests/refresh_theme.php
+      - name: Notice page migration and visibility
+        run: php tests/notice_pages.php
+      - name: Versioned admin frontend generation
+        run: php tests/admin_frontend.php

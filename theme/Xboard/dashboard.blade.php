@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="description" content="{{ $description }}" />
   <meta name="theme-color" content="#0057ff" />
+  <link rel="icon" type="image/svg+xml" href="/assets/126/logo.svg" />
   <title>{{ $title }}</title>
   <script>
     window.routerBase = "/";
@@ -18,7 +19,7 @@
       background_url: @json($theme_config['background_url'] ?? ''),
       description: @json($description),
       i18n: ['zh-CN', 'en-US', 'ja-JP', 'vi-VN', 'ko-KR', 'zh-TW', 'fa-IR'],
-      logo: @json($logo)
+      logo: @json($logo ?: "/assets/126/logo.svg")
     };
     // Decide before first paint. Existing hash routes and invitation links stay intact.
     (function () {
@@ -36,7 +37,7 @@
     @include('theme::Xboard.home')
   </div>
   <div id="portal-chrome">
-    <a class="portal-brand" href="/" aria-label="返回首页"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M13 34C21.5 34 26.5 14 35 14" stroke="currentColor" stroke-width="4.2" stroke-linecap="round"/><circle cx="13" cy="34" r="4.6" fill="currentColor"/><circle cx="35" cy="14" r="5" fill="#ffd60a"/></svg></span>{{ $title }}</a>
+    <a class="portal-brand" href="/" aria-label="返回首页"><img class="brand-logo" src="/assets/126/logo.svg" width="40" height="40" alt="" />{{ $title }}</a>
     <span class="portal-chrome-label">用户中心</span>
     <a class="portal-back" href="/">返回首页 <span aria-hidden="true">↗</span></a>
   </div>

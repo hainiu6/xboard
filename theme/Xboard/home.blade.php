@@ -1,7 +1,7 @@
 <a class="skip-link" href="#main-content">跳至主要内容</a>
 <header class="home-header">
   <a class="home-brand" href="/" aria-label="{{ $title }} 首页">
-    <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M13 34C21.5 34 26.5 14 35 14" stroke="currentColor" stroke-width="4.2" stroke-linecap="round"/><circle cx="13" cy="34" r="4.6" fill="currentColor"/><circle cx="35" cy="14" r="5" fill="#ffd60a"/></svg></span>
+    <img class="brand-logo" src="/assets/126/logo.svg" width="40" height="40" alt="" />
     <span>{{ $title }}</span>
   </a>
   <nav class="home-nav" aria-label="首页导航">
@@ -78,4 +78,4 @@
   </section>
   <section class="home-container"><div class="closing-banner"><div><p class="eyebrow">BUILT FOR YOUR NEXT AI WORKFLOW</p><h2>让下一个 AI 长任务，从这里开始。</h2></div><a class="button button-lime" href="/#/login">登录我的账户 <span aria-hidden="true">↗</span></a></div></section>
 </main>
-<footer class="home-footer home-container"><a class="home-brand" href="/"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M13 34C21.5 34 26.5 14 35 14" stroke="currentColor" stroke-width="4.2" stroke-linecap="round"/><circle cx="13" cy="34" r="4.6" fill="currentColor"/><circle cx="35" cy="14" r="5" fill="#ffd60a"/></svg></span><span>{{ $title }}</span></a><p>跨境 AI 专用网络，陪伴你的每一段长任务。</p><nav aria-label="页脚导航"><a href="/#/login">登录</a><a href="/#/register">注册</a><a href="/#/knowledge">使用文档</a></nav><small>© {{ date('Y') }} {{ $title }}</small></footer>
+<footer class="home-footer home-container"><a class="home-brand" href="/"><img class="brand-logo" src="/assets/126/logo.svg" width="40" height="40" alt="" /><span>{{ $title }}</span></a><p>跨境 AI 专用网络，陪伴你的每一段长任务。</p><nav aria-label="页脚导航"><a href="/#/login">登录</a><a href="/#/register">注册</a><a href="/#/knowledge">使用文档</a></nav><small>© {{ date('Y') }} {{ $title }}</small></footer>

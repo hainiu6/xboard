@@ -53,6 +53,8 @@ class XboardUpdate extends Command
         if (!$themeService->refreshCurrentTheme()) {
             throw new \RuntimeException('用户端主题文件同步失败，请检查 storage/logs 后重试更新。');
         }
+        $adminManifest = json_decode(file_get_contents(public_path('assets/admin/manifest.json')), true, 512, JSON_THROW_ON_ERROR);
+        app(\App\Services\AdminFrontendService::class)->entry($adminManifest['index.html']['file']);
         if (config('queue.default') === 'sync') {
             $this->info('horizon:terminate skipped (sync queue, no workers to terminate).');
         } else {

@@ -28,8 +28,13 @@ async function syncSurface() {
   try {
     // Independent style sheet comes after runtime-injected component styles too.
     try {
-      const catalog = await import(`/assets/126/plan-catalog.js?v=${window.settings.catalog_version}`);
-      window.Xboard126 = { createPlansPage: catalog.createPlansPage };
+      const version = encodeURIComponent(window.settings.version);
+      const [catalog, orders, notices] = await Promise.all([
+        import(`/assets/126/plan-catalog.js?v=${window.settings.catalog_version}&release=${version}`),
+        import(`/assets/126/orders.js?release=${version}`),
+        import(`/assets/126/notices.js?release=${version}`),
+      ]);
+      window.Xboard126 = { createPlansPage: catalog.createPlansPage, createOrdersPage: orders.createOrdersPage, createNotice: notices.createNotice };
     } catch (error) {
       console.warn('The plan catalog enhancement is unavailable; using the original page.', error);
     }

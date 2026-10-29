@@ -28,7 +28,8 @@ class NoticeController extends Controller
             'img_url',
             'tags',
             'show',
-            'popup'
+            'popup',
+            'display_pages',
         ]);
         if (!$request->input('id')) {
             if (!Notice::create($data)) {

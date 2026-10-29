@@ -83,7 +83,7 @@ export function paymentTarget(value, origin) {
   try { const url = new URL(value, origin); return ['http:', 'https:'].includes(url.protocol) ? url.href : null; } catch { return null; }
 }
 
-export function createPlansPage({ h, ref, onMounted, onUnmounted, Layout, QRCode, Modal, api, getConfig, getUser, refreshUser, confirm, openPayment, navigate }) {
+export function createPlansPage({ h, ref, onMounted, onUnmounted, Layout, QRCode, Modal, api, getConfig, getUser, refreshUser, confirm, openPayment, navigate, getRequestedOrder = () => null }) {
   return {
     name: '126PlanCatalog',
     setup() {
@@ -129,7 +129,11 @@ export function createPlansPage({ h, ref, onMounted, onUnmounted, Layout, QRCode
         } catch (failure) { error.value = failure.message || '加载失败，请检查网络后重试。'; }
         finally { loading.value = false; }
       };
-      onMounted(load);
+      onMounted(async () => {
+        await load();
+        const requested = getRequestedOrder();
+        if (typeof requested === 'string' && pending.value?.trade_no === requested && Number(pending.value.status) === 0) await resumeOrder();
+      });
       const clearCoupon = () => { coupon.value = null; couponError.value = ''; };
       const choose = (plan, key) => {
         if (busy.value || hasOrder() || completed.value) return;

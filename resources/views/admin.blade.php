@@ -66,7 +66,7 @@
       <script src="/assets/admin/{{ $locale }}"></script>
     @endforeach
     @foreach($scripts as $js)
-      <script type="module" crossorigin src="/assets/admin/{{ $js }}"></script>
+      <script type="module" crossorigin src="{{ app(\App\Services\AdminFrontendService::class)->entry($js) }}"></script>
     @endforeach
   @else
     {{-- Fallback: hardcoded paths for backward compatibility --}}

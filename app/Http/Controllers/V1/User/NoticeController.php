@@ -10,17 +10,16 @@ class NoticeController extends Controller
 {
     public function fetch(Request $request)
     {
-        $current = $request->input('current') ? $request->input('current') : 1;
-        $pageSize = 5;
-        $model = Notice::orderBy('sort', 'ASC')
+        $request->validate(['page' => 'nullable|string|in:' . implode(',', Notice::DISPLAY_PAGES)]);
+        $page = $request->input('page') ?: 'dashboard';
+        $res = Notice::displayedOn($page)->orderBy('sort', 'ASC')
             ->orderBy('id', 'DESC')
-            ->where('show', true);
-        $total = $model->count();
-        $res = $model->forPage($current, $pageSize)
+            ->where('show', true)
+            ->limit(1)
             ->get();
         return response([
             'data' => $res,
-            'total' => $total
+            'total' => $res->count()
         ]);
     }
 }
