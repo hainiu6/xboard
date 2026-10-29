@@ -52,7 +52,8 @@ Notice::create(['title' => '隐藏公告', 'content' => '不可见', 'show' => f
 Notice::create(['title' => '未勾选页面', 'content' => '不可见', 'show' => true, 'sort' => 0, 'display_pages' => []]);
 $notice = Notice::create(['title' => '第一条', 'content' => '**直接展示内容**', 'show' => true, 'sort' => 1, 'display_pages' => ['plan', 'order']]);
 Notice::create(['title' => '第二条', 'content' => '不展示', 'show' => true, 'sort' => 2, 'display_pages' => ['plan']]);
-check($fetch('plan')['total'] === 1 && $fetch('plan')['data'][0]['id'] === $notice->id, 'Only the first enabled matching notice should be returned.');
+$actual = $fetch('plan');
+check($actual['total'] === 1 && $actual['data'][0]['id'] === $notice->id, 'Only the first enabled matching notice should be returned: ' . json_encode(['actual' => $actual, 'expected_id' => $notice->id, 'records' => Notice::all()->toArray()], JSON_UNESCAPED_UNICODE));
 check($fetch('order')['data'][0]['content'] === '**直接展示内容**', 'Selected pages lost notice content.');
 check($fetch('ticket')['data'] === [], 'Notice leaked to an unselected page.');
 $notice->update(['display_pages' => []]);
