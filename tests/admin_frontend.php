@@ -10,12 +10,12 @@ $root = sys_get_temp_dir() . '/xboard-admin-' . bin2hex(random_bytes(5));
 $files = new Filesystem();
 $files->makeDirectory($root . '/public/assets/admin/assets', 0755, true);
 $files->makeDirectory($root . '/public/assets/126', 0755, true);
-$files->makeDirectory($root . '/resources/frontend', 0755, true);
+$files->makeDirectory($root . '/resources/ui', 0755, true);
 $manifest = json_decode(file_get_contents($sourceRoot . '/public/assets/admin/manifest.json'), true);
 $entry = $manifest['index.html']['file'];
 $files->copy($sourceRoot . '/public/assets/admin/' . $entry, $root . '/public/assets/admin/' . $entry);
 $files->copy($sourceRoot . '/public/assets/126/admin-notice.js', $root . '/public/assets/126/admin-notice.js');
-$files->copy($sourceRoot . '/resources/frontend/admin-notice-bridge.json', $root . '/resources/frontend/admin-notice-bridge.json');
+$files->copy($sourceRoot . '/resources/ui/admin-notice-bridge.json', $root . '/resources/ui/admin-notice-bridge.json');
 $app = new Application($root);
 try {
     $original = hash_file('sha256', public_path('assets/admin/' . $entry));

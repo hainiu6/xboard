@@ -1,0 +1,14 @@
+{
+  "start": "const H2t=",
+  "end": "function $2t(",
+  "replacements": [
+    [
+      "tags:gy(cy()),img_url:cy().nullable()}),z2t={id:null,show:!1,tags:[],img_url:\"\",title:\"\",content:\"\"}",
+      "tags:gy(cy()),img_url:cy().nullable(),display_pages:gy(cy()).nullable().optional()}),z2t={id:null,show:!1,tags:[],img_url:\"\",title:\"\",content:\"\",display_pages:[\"dashboard\"]}"
+    ],
+    [
+      "Q.jsx($y,{control:a.control,name:\"title\",render:({field:e})=>",
+      "Q.jsx($y,{control:a.control,name:\"display_pages\",render:({field:e})=>renderNoticePages(Q,e)}),Q.jsx($y,{control:a.control,name:\"title\",render:({field:e})=>"
+    ]
+  ]
+}

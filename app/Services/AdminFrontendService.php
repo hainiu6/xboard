@@ -10,7 +10,7 @@ class AdminFrontendService
     public function entry(string $entry): string
     {
         $sourcePath = public_path('assets/admin/' . $entry);
-        $patchPath = resource_path('frontend/admin-notice-bridge.json');
+        $patchPath = resource_path('ui/admin-notice-bridge.json');
         $fieldPath = public_path('assets/126/admin-notice.js');
         if (!is_file($sourcePath) || !is_file($patchPath) || !is_file($fieldPath)) {
             throw new RuntimeException('公告管理前端文件不完整，请重新更新代码。');

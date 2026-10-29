@@ -61,7 +61,7 @@ import json
 manifest = json.loads((root / 'public/assets/admin/manifest.json').read_text())
 entry = manifest['index.html']['file']
 admin = (root / 'public/assets/admin' / entry).read_text()
-patches = json.loads((root / 'resources/frontend/admin-notice-bridge.json').read_text())
+patches = json.loads((root / 'resources/ui/admin-notice-bridge.json').read_text())
 start = admin.find(patches['start'])
 end = admin.find(patches['end'], start)
 if start < 0 or end < 0:
