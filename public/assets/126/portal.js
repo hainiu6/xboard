@@ -27,7 +27,13 @@ async function syncSurface() {
   portalStarted = true;
   try {
     // Independent style sheet comes after runtime-injected component styles too.
-    await import(`${window.settings.assets_path}/umi.js`);
+    try {
+      const catalog = await import(`/assets/126/plan-catalog.js?v=${window.settings.catalog_version}`);
+      window.Xboard126 = { createPlansPage: catalog.createPlansPage };
+    } catch (error) {
+      console.warn('The plan catalog enhancement is unavailable; using the original page.', error);
+    }
+    await import(`${window.settings.assets_path}/umi.js?v=${window.settings.bundle_version}`);
     document.head.appendChild(document.querySelector('link[href*="/assets/126/theme.css"]'));
   } catch (error) {
     console.error('Unable to load the user portal', error);

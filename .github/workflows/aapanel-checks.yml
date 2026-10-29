@@ -20,6 +20,8 @@ jobs:
         run: python3 tests/aapanel_deploy_test.py
       - name: Theme JavaScript syntax
         run: node --check public/assets/126/portal.js
+      - name: Plan catalog calculation and navigation
+        run: node tests/plan_catalog_test.mjs
       - name: Install view rendering dependencies
         run: composer install --no-dev --no-scripts --no-interaction --prefer-dist
       - name: Render Blade theme

@@ -54,8 +54,8 @@
       <div class="section-heading"><div><p class="eyebrow">02 / FEATURES</p><h2>为持续运行的工作流而设计。</h2></div><p>从一次连接，到一段长任务。<br>让开发、协作和 AI 会话更顺畅。</p></div>
       <div class="experience-grid">
         <article class="experience-card"><span class="feature-icon" aria-hidden="true">◫</span><span class="feature-number">01 / CONNECTION</span><h3>稳定连接</h3><p>为日常开发、远程协作和 AI 工作流提供连接支持，在用户中心随时掌握订阅状态。</p><a href="/#/dashboard">进入用户中心 <span aria-hidden="true">↗</span></a></article>
-        <article class="experience-card"><span class="feature-icon" aria-hidden="true">⌘</span><span class="feature-number">02 / ACCOUNT</span><h3>清晰管理</h3><p>订阅、账户与客户端配置分工清晰，按系统查看文档，轻松找到正确的使用入口。</p><a href="/#/dashboard/knowledge">查看使用文档 <span aria-hidden="true">↗</span></a></article>
-        <article class="experience-card"><span class="feature-icon" aria-hidden="true">↗</span><span class="feature-number">03 / GLOBAL</span><h3>全球连接</h3><p>面向常用协作与 AI 服务区域，节点状态和服务工单集中管理，让每一步都有据可循。</p><a href="/#/dashboard/ticket">获取帮助 <span aria-hidden="true">↗</span></a></article>
+        <article class="experience-card"><span class="feature-icon" aria-hidden="true">⌘</span><span class="feature-number">02 / ACCOUNT</span><h3>清晰管理</h3><p>订阅、账户与客户端配置分工清晰，按系统查看文档，轻松找到正确的使用入口。</p><a href="/#/knowledge">查看使用文档 <span aria-hidden="true">↗</span></a></article>
+        <article class="experience-card"><span class="feature-icon" aria-hidden="true">↗</span><span class="feature-number">03 / GLOBAL</span><h3>全球连接</h3><p>面向常用协作与 AI 服务区域，节点状态和服务工单集中管理，让每一步都有据可循。</p><a href="/#/ticket">获取帮助 <span aria-hidden="true">↗</span></a></article>
       </div>
     </div>
   </section>
@@ -78,4 +78,4 @@
   </section>
   <section class="home-container"><div class="closing-banner"><div><p class="eyebrow">BUILT FOR YOUR NEXT AI WORKFLOW</p><h2>让下一个 AI 长任务，从这里开始。</h2></div><a class="button button-lime" href="/#/login">登录我的账户 <span aria-hidden="true">↗</span></a></div></section>
 </main>
-<footer class="home-footer home-container"><a class="home-brand" href="/"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M13 34C21.5 34 26.5 14 35 14" stroke="currentColor" stroke-width="4.2" stroke-linecap="round"/><circle cx="13" cy="34" r="4.6" fill="currentColor"/><circle cx="35" cy="14" r="5" fill="#ffd60a"/></svg></span><span>{{ $title }}</span></a><p>跨境 AI 专用网络，陪伴你的每一段长任务。</p><nav aria-label="页脚导航"><a href="/#/login">登录</a><a href="/#/register">注册</a><a href="/#/dashboard/knowledge">使用文档</a></nav><small>© {{ date('Y') }} {{ $title }}</small></footer>
+<footer class="home-footer home-container"><a class="home-brand" href="/"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M13 34C21.5 34 26.5 14 35 14" stroke="currentColor" stroke-width="4.2" stroke-linecap="round"/><circle cx="13" cy="34" r="4.6" fill="currentColor"/><circle cx="35" cy="14" r="5" fill="#ffd60a"/></svg></span><span>{{ $title }}</span></a><p>跨境 AI 专用网络，陪伴你的每一段长任务。</p><nav aria-label="页脚导航"><a href="/#/login">登录</a><a href="/#/register">注册</a><a href="/#/knowledge">使用文档</a></nav><small>© {{ date('Y') }} {{ $title }}</small></footer>
