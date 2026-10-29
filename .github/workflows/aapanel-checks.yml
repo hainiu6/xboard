@@ -18,3 +18,9 @@ jobs:
         run: php -l scripts/backup-mysql.php
       - name: Isolated deployment flow
         run: python3 tests/aapanel_deploy_test.py
+      - name: Theme JavaScript syntax
+        run: node --check public/assets/126/portal.js
+      - name: Install view rendering dependencies
+        run: composer install --no-dev --no-scripts --no-interaction --prefer-dist
+      - name: Render Blade theme
+        run: php tests/render_theme.php
