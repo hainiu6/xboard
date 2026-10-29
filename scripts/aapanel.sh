@@ -131,7 +131,10 @@ main() {
         return
     fi
     [[ -s .env && -f vendor/autoload.php ]] || fail "找不到已安装站点的 .env 或 vendor，请先安装。"
-    [[ "$(git_run branch --show-current)" == main ]] || fail "线上站点必须使用 main 分支。"
+    local current_branch
+    # symbolic-ref is supported by older distribution Git versions too.
+    current_branch="$(git_run symbolic-ref --quiet --short HEAD)" || fail "当前处于 detached HEAD 状态，请先切回 main 分支。"
+    [[ "$current_branch" == main ]] || fail "线上站点必须使用 main 分支（当前：${current_branch}）。"
     case "$(git_run config --get remote.origin.url)" in
         https://github.com/hainiu6/xboard|https://github.com/hainiu6/xboard.git|git@github.com:hainiu6/xboard.git) ;;
         *) fail "origin 必须指向 https://github.com/hainiu6/xboard.git。";;

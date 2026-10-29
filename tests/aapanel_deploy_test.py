@@ -1,6 +1,7 @@
 """Isolated deployment checks: real Git and archives, fake PHP/services. No server access."""
 import os
 import shutil
+import shlex
 import subprocess
 import tempfile
 import unittest
@@ -105,6 +106,40 @@ exit 0
         calls = self.log.read_text()
         self.assertLess(calls.index('backup-mysql.php'), calls.index('artisan down'))
         self.assertLess(calls.index('artisan migrate'), calls.index('artisan up'))
+
+    def test_update_supports_git_without_show_current(self):
+        self.write_executable('git', '#!/bin/sh\n'
+                              'for arg do\n'
+                              '  if [ "$arg" = --show-current ]; then\n'
+                              '    echo "error: unknown option show-current" >&2; exit 129\n'
+                              '  fi\n'
+                              'done\n'
+                              'exec ' + shlex.quote(REAL_GIT) + ' "$@"\n')
+        result = self.run_deploy()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.git('rev-parse', 'HEAD').stdout.strip(), self.target)
+
+    def test_bootstrap_from_ignored_tools_keeps_worktree_clean(self):
+        bootstrap = self.site / '.tools/aapanel-update.sh'
+        bootstrap.write_text(self.git('show', self.target + ':scripts/aapanel.sh').stdout)
+        self.assertEqual(self.git('status', '--porcelain').stdout, '')
+        result = subprocess.run(['bash', str(bootstrap), 'update'], cwd=self.site,
+                                env=self.env, text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.git('rev-parse', 'HEAD').stdout.strip(), self.target)
+        self.assertIn('keep-this-key', (self.site / '.env').read_text())
+
+    def test_detached_head_is_reported_without_changing_code(self):
+        self.git('checkout', '--detach', self.old)
+        result = self.run_deploy()
+        self.assert_stopped_before_update(result)
+        self.assertIn('detached HEAD', result.stderr)
+
+    def test_other_branch_is_reported_without_changing_code(self):
+        self.git('checkout', '-b', 'local-work')
+        result = self.run_deploy()
+        self.assert_stopped_before_update(result)
+        self.assertIn('当前：local-work', result.stderr)
 
     def test_failed_backup_does_not_touch_code_or_enter_maintenance(self):
         result = self.run_deploy(MOCK_FAIL='backup')
