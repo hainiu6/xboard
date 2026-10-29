@@ -144,13 +144,14 @@ await run('Switching the period synchronizes every card price and selecting anot
  period(cards()[1],'两年').props.onClick();
  for (let i=0;i<4;i++) {
    const card=cards()[i];
-   assert.equal(period(card,'两年').props['aria-pressed'],true);
+   assert.equal(period(card,'两年').props['aria-pressed'],i===1);
    assert.equal(period(card,'一年').props['aria-pressed'],false);
    const price=walk(card).find(item=>hasClass(item,'purchase-price'));
    assert.ok(JSON.stringify(price).includes(money(catalogPlans[i].two_year_price/24)));
  }
  walk(cards()[3]).find(item=>item.type==='button' && hasClass(item,'purchase-card-title')).props.onClick();
  assert.ok(JSON.stringify(h.nodes().find(item=>hasClass(item,'purchase-summary'))).includes('V4测试套餐 · 两年方案'));
+ assert.equal(h.nodes().filter(item=>hasClass(item,'purchase-period')&&item.props['aria-pressed']).length,1);
  h.dispose();
 });
 await run('A missing shared period is shown as unavailable rather than displaying another price', async () => {
