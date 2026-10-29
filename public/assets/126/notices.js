@@ -9,11 +9,18 @@ export function noticePage(path) {
 export function noticeClasses(value) {
   return [...new Set(String(value || '').split(/\s+/).filter(Boolean))].join(' ');
 }
+export function renderNoticeContent(content, renderMarkdown) {
+  const source = String(content || '');
+  // Styled HTML is already a complete document/fragment. Passing it through
+  // Markdown turns indented blocks after blank lines into visible source code.
+  const html = /^\s*(?:<!--[\s\S]*?-->\s*)*(?:<!doctype\s+html\b|<(?:html|head|body|style|div|section|article|header|footer|main|details|table|blockquote|ul|ol|p|h[1-6])(?:\s|>))/i;
+  return html.test(source) ? source : renderMarkdown(source);
+}
 export function safeNoticeHtml(html) {
   const doc = new DOMParser().parseFromString(String(html), 'text/html');
   // DOMParser moves a leading <style> into <head>; keep it with the content.
   for (const style of [...doc.head.querySelectorAll('style')].reverse()) doc.body.prepend(style);
-  const allowed = new Set(['STYLE','P','BR','HR','H1','H2','H3','H4','H5','H6','STRONG','B','EM','I','U','S','DEL','UL','OL','LI','BLOCKQUOTE','PRE','CODE','A','IMG','TABLE','THEAD','TBODY','TR','TH','TD','DIV','SPAN','DETAILS','SUMMARY']);
+  const allowed = new Set(['STYLE','P','BR','HR','H1','H2','H3','H4','H5','H6','STRONG','B','EM','I','U','S','DEL','UL','OL','LI','BLOCKQUOTE','PRE','CODE','A','IMG','TABLE','THEAD','TBODY','TR','TH','TD','DIV','SPAN','SECTION','ARTICLE','HEADER','FOOTER','MAIN','ASIDE','FIGURE','FIGCAPTION','DETAILS','SUMMARY']);
   for (const element of [...doc.body.querySelectorAll('*')]) {
     if (!allowed.has(element.tagName)) { element.remove(); continue; }
     for (const attribute of [...element.attributes]) {
@@ -78,7 +85,7 @@ export function createNotice({ h, ref, onMounted, onUnmounted, api, getPath, ren
           const response = await api.get(`/user/notice/fetch?page=${encodeURIComponent(page)}`);
           if (active && Array.isArray(response.data) && response.data[0]) {
             const item = response.data[0];
-            notice.value = { title: String(item.title || '站点公告'), document: noticeDocument(renderMarkdown(String(item.content || '')), document.documentElement.classList.contains('dark')) };
+            notice.value = { title: String(item.title || '站点公告'), document: noticeDocument(renderNoticeContent(item.content, renderMarkdown), document.documentElement.classList.contains('dark')) };
           }
         } catch { /* An unavailable announcement must not block the user's page. */ }
       });
