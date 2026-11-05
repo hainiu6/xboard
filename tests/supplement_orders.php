@@ -17,6 +17,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Application;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\ResponseFactory;
 use Illuminate\Support\Facades\Facade;
 use Illuminate\Translation\ArrayLoader;
 use Illuminate\Translation\Translator;
@@ -37,9 +38,9 @@ $validator = new Factory($translator, $app);
 Request::macro('validate', function (array $rules) use ($validator) {
     return $validator->make($this->all(), $rules)->validate();
 });
-$app->instance(\Illuminate\Contracts\Routing\ResponseFactory::class, new class {
-    public function json($data, $status) { return new JsonResponse($data, $status); }
-});
+// Only JSON responses are used here; views and redirects need no setup.
+$app->instance(\Illuminate\Contracts\Routing\ResponseFactory::class,
+    (new ReflectionClass(ResponseFactory::class))->newInstanceWithoutConstructor());
 
 $db->schema()->create('v2_user', function (Blueprint $table) {
     $table->id();
