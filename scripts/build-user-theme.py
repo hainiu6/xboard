@@ -9,7 +9,7 @@ import hashlib
 root = Path(__file__).resolve().parents[1]
 bundle = root / 'theme/Xboard/assets/umi.js'
 source = bundle.read_text()
-bridge = '''/*126_PLAN_CATALOG*/(window.Xboard126&&typeof window.Xboard126.createPlansPage==="function"?window.Xboard126.createPlansPage({h:Lr,ref:Et,onMounted:Dn,onUnmounted:Wn,Layout:Zj,QRCode:h$,Modal:RI,api:{get:e=>EN.get(e),post:(e,t)=>EN.post(e,t)},getConfig:()=>_N().appConfig,getUser:()=>BN().userInfo,refreshUser:()=>BN().getUserInfo(),confirm:e=>Promise.resolve(window.confirm(e)),openPayment:e=>window.location.assign(e),navigate:e=>qN.push(e),getRequestedOrder:()=>qN.currentRoute.value.query.trade_no}):OX)/*126_END*/'''
+bridge = '''/*126_PLAN_CATALOG*/(window.Xboard126&&typeof window.Xboard126.createPlansPage==="function"?window.Xboard126.createPlansPage({h:Lr,ref:Et,onMounted:Dn,onUnmounted:Wn,Layout:Zj,QRCode:h$,Modal:RI,api:{get:e=>EN.get(e),post:(e,t)=>EN.post(e,t)},getConfig:()=>_N().appConfig,getUser:()=>BN().userInfo,refreshUser:()=>BN().getUserInfo(),confirm:e=>Promise.resolve(window.confirm(e)),openPayment:e=>window.location.assign(e),navigate:e=>qN.push(e),getRequestedOrder:()=>qN.currentRoute.value.query.trade_no,onRequestedOrderChange:callback=>qN.afterEach((to,from,failure)=>{if(!failure&&to.path==="/plan"&&from.path==="/plan"&&to.query.trade_no!==from.query.trade_no)callback(to.query.trade_no)})}):OX)/*126_END*/'''
 if '/*126_PLAN_CATALOG*/' in source:
     source, count = re.subn(r'/\*126_PLAN_CATALOG\*/.*?/\*126_END\*/', lambda _: bridge, source)
 else:

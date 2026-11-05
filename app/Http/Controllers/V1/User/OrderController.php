@@ -14,7 +14,6 @@ use App\Models\User;
 use App\Services\CouponService;
 use App\Services\OrderService;
 use App\Services\PaymentService;
-use App\Services\PlanService;
 use App\Services\UserService;
 use App\Utils\Helper;
 use Illuminate\Http\Request;
@@ -98,26 +97,19 @@ class OrderController extends Controller
     {
         $request->validate([
             'plan_id' => 'required|exists:App\Models\Plan,id',
-            'period' => 'required|string'
+            'period' => 'required|string',
+            'checkout_token' => 'nullable|uuid',
         ]);
 
         $user = User::findOrFail($request->user()->id);
-        $userService = app(UserService::class);
-
-        if ($userService->isNotCompleteOrderByUserId($user->id)) {
-            throw new ApiException(__('You have an unpaid or pending order, please try again later or cancel it'));
-        }
-
         $plan = Plan::findOrFail($request->input('plan_id'));
-        $planService = new PlanService($plan);
-
-        $planService->validatePurchase($user, $request->input('period'));
 
         $order = OrderService::createFromRequest(
             $user,
             $plan,
             $request->input('period'),
-            $request->input('coupon_code')
+            $request->input('coupon_code'),
+            $request->input('checkout_token')
         );
 
         return $this->success($order->trade_no);

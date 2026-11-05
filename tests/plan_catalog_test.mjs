@@ -39,8 +39,9 @@ const node = (type, props = {}, children = []) => ({ type, props, children });
 const walk = item => item && typeof item === 'object' ? [item, ...(Array.isArray(item.children) ? item.children.flatMap(walk) : [])] : [];
 globalThis.location = {origin:'https://panel.test'};
 async function harness(overrides = {}) {
-  let mounted;
+  let mounted, routeChanged;
   const cleanups=[], calls=[], redirects=[], navigations=[];
+  const saved = new Map();
   const state={total:18000,status:0,orders:[],methods:[{id:1,name:'支付宝',handling_fee_fixed:0,handling_fee_percent:0}],user:{},...overrides};
   const api={
     async get(url) {
@@ -50,7 +51,10 @@ async function harness(overrides = {}) {
       if(url==='/user/order/fetch')return {data:state.orders};
       if(url.startsWith('/user/order/detail')) {
         if(state.detailError)throw new Error('网络暂不可用');
-        return {data:{trade_no:'test-order',total_amount:state.total,status:state.status,plan,period:'year_price',plan_id:plan.id}};
+        const tradeNo = new URL(url, location.origin).searchParams.get('trade_no');
+        const matching = state.orders.find(item => item.trade_no === tradeNo);
+        if (!matching && tradeNo !== 'test-order') return {data:null};
+        return {data:{trade_no:tradeNo,total_amount:state.total,status:state.status,plan,period:'year_price',plan_id:plan.id,...matching}};
       }
       if(url.startsWith('/user/order/check'))return {data:state.status};
       throw new Error(url);
@@ -62,7 +66,9 @@ async function harness(overrides = {}) {
         return {data:{type:2,value:10,name:'测试优惠券'}};
       }
       if(url==='/user/order/save') {
-        if(state.saveError){state.orders=[{trade_no:'test-order',plan,period:'year_price',status:0}];throw new Error('订单响应超时');}
+        if (saved.has(data.checkout_token)) return {data:saved.get(data.checkout_token)};
+        saved.set(data.checkout_token, 'test-order');
+        if(state.saveError)throw new Error('订单响应超时');
         return {data:'test-order'};
       }
       if(url==='/user/order/checkout') {
@@ -73,14 +79,14 @@ async function harness(overrides = {}) {
       throw new Error(url);
     }
   };
-  const page=createPlansPage({h:node,ref:value=>({value}),onMounted:callback=>{mounted=callback;},onUnmounted:callback=>cleanups.push(callback),Layout:'layout',QRCode:'qr',Modal:'modal',api,getConfig:()=>({currency_symbol:'¥'}),getUser:()=>state.user,confirm:async()=>state.confirm!==false,openPayment:url=>redirects.push(url),navigate:url=>navigations.push(url),getRequestedOrder:()=>state.requestedOrder});
+  const page=createPlansPage({h:node,ref:value=>({value}),onMounted:callback=>{mounted=callback;},onUnmounted:callback=>cleanups.push(callback),Layout:'layout',QRCode:'qr',Modal:'modal',api,getConfig:()=>({currency_symbol:'¥'}),getUser:()=>state.user,confirm:async()=>state.confirm!==false,openPayment:url=>redirects.push(url),navigate:url=>navigations.push(url),getRequestedOrder:()=>state.requestedOrder,onRequestedOrderChange:callback=>{routeChanged=callback;return ()=>{};}});
   const render=page.setup(); await mounted();
   const nodes=()=>walk(render().children.default()[0]);
   const payButton=()=>nodes().find(item=>item.props.class==='purchase-checkout-action').children.find(item=>item.type==='button');
   const choose=()=>nodes().find(item=>item.type==='button'&&item.children?.some?.(child=>child?.props?.class==='purchase-period-main'&&JSON.stringify(child).includes('一年'))).props.onClick();
   const couponInput=value=>nodes().find(item=>item.type==='input'&&item.props['aria-label']==='优惠券代码').props.onInput({target:{value}});
   const validateCoupon=()=>nodes().find(item=>item.type==='button'&&item.children==='使用优惠券').props.onClick();
-  return {state,calls,redirects,navigations,nodes,payButton,choose,couponInput,validateCoupon,dispose:()=>cleanups.forEach(callback=>callback())};
+  return {state,calls,redirects,navigations,nodes,payButton,choose,couponInput,validateCoupon,routeChanged,dispose:()=>cleanups.forEach(callback=>callback())};
 }
 const count=(h,url)=>h.calls.filter(call=>call[0]==='POST'&&call[1]===url).length;
 const run=async(name,test)=>{await test();console.log('✓ '+name);};
@@ -108,15 +114,19 @@ await run('An increased server amount requires explicit reconfirmation on this p
 await run('Gateway errors retry the existing order',async()=>{
  const h=await harness({checkoutError:true});h.choose();await h.payButton().props.onClick();h.state.checkoutError=false;await h.payButton().props.onClick();assert.equal(count(h,'/user/order/save'),1);assert.equal(h.redirects.length,1);h.dispose();
 });
-await run('A lost save response is recovered from pending orders without another save',async()=>{
- const h=await harness({saveError:true});h.choose();await h.payButton().props.onClick();await h.payButton().props.onClick();assert.equal(count(h,'/user/order/save'),1);
- await h.nodes().find(item=>item.type==='button'&&item.children==='继续支付此订单').props.onClick();await h.payButton().props.onClick();assert.equal(count(h,'/user/order/save'),1);assert.equal(h.redirects.length,1);h.dispose();
+await run('A lost save response retries with the same checkout token',async()=>{
+ const h=await harness({saveError:true});h.choose();await h.payButton().props.onClick();await h.payButton().props.onClick();
+ const saves=h.calls.filter(call=>call[1]==='/user/order/save');
+ assert.equal(saves.length,2);assert.match(saves[0][2].checkout_token,/^[a-f0-9-]{36}$/);
+ assert.equal(saves[0][2].checkout_token,saves[1][2].checkout_token);
+ assert.equal(h.redirects.length,1);h.dispose();
 });
 await run('Changing a current subscription requires confirmation before saving',async()=>{
  const h=await harness({user:{plan_id:8,expired_at:null},confirm:false});h.choose();await h.payButton().props.onClick();assert.equal(count(h,'/user/order/save'),0);h.dispose();
 });
-await run('An existing unpaid order is not silently replaced or cancelled',async()=>{
- const h=await harness({orders:[{trade_no:'old',plan,period:'year_price',status:0}]});h.choose();await h.payButton().props.onClick();assert.equal(count(h,'/user/order/save'),0);assert.equal(count(h,'/user/order/cancel'),0);h.dispose();
+await run('An existing unpaid order does not block a new checkout',async()=>{
+ const h=await harness({orders:[{trade_no:'old',plan,period:'year_price',status:0}]});h.choose();await h.payButton().props.onClick();assert.equal(count(h,'/user/order/save'),1);assert.equal(count(h,'/user/order/cancel'),0);
+ assert.equal(h.calls.find(call=>call[1]==='/user/order/checkout')[2].trade_no,'test-order');h.dispose();
 });
 await run('Balance-covered orders complete without an external payment method',async()=>{
  const h=await harness({total:0,user:{balance:18000},methods:[],payment:{type:-1,data:true}});h.choose();assert.equal(h.payButton().props.disabled,false);await h.payButton().props.onClick();assert.ok(JSON.stringify(h.nodes()).includes('付款成功'));assert.equal(h.redirects.length,0);h.dispose();
@@ -172,12 +182,23 @@ await run('Cycle changes clear coupon eligibility and do not alter a created ord
  assert.equal(period().props.disabled,true);h.dispose();
 });
 assert.deepEqual(displayFeatures({content:'速度：10Mbps\n设备：支持 2 个设备在线\nIP人数：100人共享'}).map(item=>item.text),['100人共享','10M 连接速度','2台设备同时在线']);
-await run('Order-history handoff resumes only a matching owned pending order without creating a new one',async()=>{
- const h=await harness({requestedOrder:'test-order',orders:[{trade_no:'test-order',plan,period:'year_price',status:0}]});
+await run('Order history resumes the selected older order and its previous payment method',async()=>{
+ const h=await harness({requestedOrder:'older',methods:[{id:1},{id:2}],orders:[{trade_no:'newest',status:0},{trade_no:'older',status:0,payment_id:2,total_amount:7000}]});
  assert.ok(JSON.stringify(h.nodes()).includes('已创建待支付订单'));
- await h.payButton().props.onClick();assert.equal(count(h,'/user/order/save'),0);assert.equal(count(h,'/user/order/checkout'),1);h.dispose();
- const other=await harness({requestedOrder:'someone-else',orders:[{trade_no:'test-order',plan,period:'year_price',status:0}]});
- assert.equal(other.calls.filter(call=>call[1].startsWith('/user/order/detail')).length,0);other.dispose();
+ assert.ok(JSON.stringify(h.nodes()).includes('¥70.00'));
+ await h.payButton().props.onClick();assert.equal(count(h,'/user/order/save'),0);
+ assert.deepEqual(h.calls.find(call=>call[1]==='/user/order/checkout')[2],{trade_no:'older',method:2});
+ h.nodes().find(item=>item.type==='button'&&item.children==='继续选购').props.onClick();
+ assert.deepEqual(h.navigations,['/plan']);assert.equal(count(h,'/user/order/cancel'),0);
+ await h.payButton().props.onClick();assert.equal(count(h,'/user/order/save'),1);h.dispose();
+});
+await run('A missing or cancelled order never falls through to a new purchase',async()=>{
+ for(const requestedOrder of ['someone-else','cancelled']) {
+   const h=await harness({requestedOrder,plans:catalogPlans,orders:[{trade_no:'cancelled',status:2}]});
+   assert.equal(h.payButton().props.disabled,true);
+   await h.payButton().props.onClick();assert.equal(count(h,'/user/order/save'),0);
+   assert.equal(count(h,'/user/order/checkout'),0);h.dispose();
+ }
 });
 const bundle=await readFile(new URL('../theme/Xboard/assets/umi.js',import.meta.url),'utf8');
 assert.ok(bundle.includes('/*126_PLAN_CATALOG*/'));

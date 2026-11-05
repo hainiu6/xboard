@@ -8,10 +8,13 @@ use App\Http\Controllers\V1\User\OrderController;
 use App\Http\Controllers\V2\Admin\OrderController as AdminOrders;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\Plan;
 use App\Models\User;
 use App\Services\OrderService;
 use App\Services\Plugin\PluginManager;
 use App\Services\UserService;
+use App\Support\Setting;
+use Illuminate\Config\Repository;
 use Illuminate\Database\Capsule\Manager as Capsule;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Application;
@@ -34,6 +37,11 @@ $app->instance('db', $db->getDatabaseManager());
 $app->bind('db.schema', fn () => $db->schema());
 $app->instance('translator', $translator = new Translator(new ArrayLoader(), 'en'));
 $app->instance('log', new \Psr\Log\NullLogger());
+$app->instance('config', new Repository());
+$app->instance(Setting::class, new class extends Setting {
+    public function __construct() {}
+    public function get(string $key, mixed $default = null): mixed { return $default; }
+});
 $validator = new Factory($translator, $app);
 Request::macro('validate', function (array $rules) use ($validator) {
     return $validator->make($this->all(), $rules)->validate();
@@ -49,6 +57,8 @@ $db->schema()->create('v2_user', function (Blueprint $table) {
     $table->integer('plan_id')->default(9);
     $table->integer('expired_at')->default(1234567890);
     $table->integer('balance')->default(0);
+    $table->integer('u')->default(0);
+    $table->integer('d')->default(0);
     $table->integer('created_at');
     $table->integer('updated_at');
 });
@@ -59,12 +69,27 @@ $db->schema()->create('v2_order', function (Blueprint $table) {
     $table->integer('payment_id')->nullable();
     $table->string('period');
     $table->integer('type');
-    $table->integer('status');
+    $table->integer('status')->default(Order::STATUS_PENDING);
     $table->string('trade_no')->unique();
     $table->integer('total_amount');
     $table->integer('handling_amount')->nullable();
+    $table->integer('balance_amount')->nullable();
+    $table->integer('invite_user_id')->nullable();
+    $table->integer('surplus_amount')->nullable();
+    $table->integer('surplus_credit')->nullable();
+    $table->text('surplus_order_ids')->nullable();
     $table->integer('paid_at')->nullable();
     $table->string('callback_no')->nullable();
+    $table->integer('created_at');
+    $table->integer('updated_at');
+});
+$db->schema()->create('v2_plan', function (Blueprint $table) {
+    $table->id();
+    $table->string('name');
+    $table->integer('transfer_enable')->default(100);
+    $table->boolean('show')->default(true);
+    $table->boolean('renew')->default(true);
+    $table->text('prices');
     $table->integer('created_at');
     $table->integer('updated_at');
 });
@@ -133,3 +158,22 @@ $check($notify('25.32') === 'success' && $order->refresh()->paid_at === $paidAt,
 $check($data($users->orderSupplement($request($first), $code)) === $one, 'A completed order could be charged again on the same link.');
 $check($first->refresh()->plan_id === 9 && $first->expired_at === 1234567890 && $first->balance === 0, 'Payment changed user subscription or balance.');
 echo "Reusable product, owner isolation, order retries and signed payment settlement passed.\n";
+
+(require dirname(__DIR__) . '/database/migrations/2026_11_05_000001_add_checkout_token_to_orders.php')->up();
+$oldPlan = Plan::create(['name' => 'Existing plan', 'prices' => [Plan::PERIOD_YEARLY => 50]]);
+$newPlan = Plan::create(['name' => 'New plan', 'prices' => [Plan::PERIOD_YEARLY => 200]]);
+$first->update(['plan_id' => $oldPlan->id, 'expired_at' => time() + 3600, 'balance' => 200]);
+$previous = Order::create([
+    'user_id' => $first->id, 'plan_id' => $oldPlan->id, 'period' => Plan::PERIOD_YEARLY,
+    'trade_no' => 'previous-paid', 'type' => Order::TYPE_NEW_PURCHASE, 'status' => Order::STATUS_COMPLETED,
+    'total_amount' => 5000,
+]);
+$token = 'eb4089c5-9465-4cca-a14c-f80933d77551';
+$upgrade = OrderService::createFromRequest($first, $newPlan, 'year_price', null, $token);
+$retry = OrderService::createFromRequest($first, $newPlan, 'year_price', null, $token);
+$next = OrderService::createFromRequest($first, $newPlan, 'year_price');
+$check($upgrade->id === $retry->id && $upgrade->id !== $next->id, 'An identical retry or a new order was mishandled.');
+$check($upgrade->refresh()->status === Order::STATUS_PENDING && $next->refresh()->status === Order::STATUS_PENDING, 'A new checkout changed an earlier order.');
+$check($upgrade->surplus_order_ids === [$previous->id] && $upgrade->surplus_amount > 0 && $next->total_amount === 20000, 'Pending upgrades reused an existing subscription credit.');
+$check($upgrade->balance_amount === 200 && $next->balance_amount === null && $first->refresh()->balance === 0, 'The same balance was reserved twice.');
+echo "Multiple pending subscription orders, idempotent retries and credit reservation passed.\n";

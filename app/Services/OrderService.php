@@ -63,30 +63,40 @@ class OrderService
         Plan $plan,
         string $period,
         ?string $couponCode = null,
+        ?string $checkoutToken = null,
     ): Order {
         $userService = app(UserService::class);
-        $planService = new PlanService($plan);
 
-        $planService->validatePurchase($user, $period);
-        HookManager::call('order.create.before', [$user, $plan, $period, $couponCode]);
-
-        return DB::transaction(function () use ($user, $plan, $period, $couponCode, $userService) {
+        return DB::transaction(function () use ($user, $plan, $period, $couponCode, $checkoutToken, $userService) {
             $user = User::lockForUpdate()->find($user->id);
             if (!$user) {
                 throw new ApiException(__('The user does not exist'));
             }
 
-            if ($userService->isNotCompleteOrderByUserId($user->id)) {
-                throw new ApiException(__('You have an unpaid or pending order, please try again later or cancel it'));
+            $newPeriod = PlanService::getPeriodKey($period);
+            if ($checkoutToken !== null) {
+                $existing = Order::where('user_id', $user->id)->where('checkout_token', $checkoutToken)->first();
+                if ($existing) {
+                    if ((int) $existing->plan_id !== (int) $plan->id || $existing->period !== $newPeriod) {
+                        throw new ApiException('付款请求已用于其他套餐或周期，请重新选择。');
+                    }
+                    return $existing;
+                }
             }
 
-            $newPeriod = PlanService::getPeriodKey($period);
+            if (Order::where('user_id', $user->id)->where('status', Order::STATUS_PROCESSING)->exists()) {
+                throw new ApiException('已有订单正在开通，请稍后再下单。');
+            }
+
+            (new PlanService($plan))->validatePurchase($user, $period);
+            HookManager::call('order.create.before', [$user, $plan, $period, $couponCode]);
 
             $order = new Order([
                 'user_id' => $user->id,
                 'plan_id' => $plan->id,
                 'period' => $newPeriod,
                 'trade_no' => Helper::generateOrderNo(),
+                'checkout_token' => $checkoutToken,
                 'total_amount' => (int) (optional($plan->prices)[$newPeriod] * 100),
             ]);
 
@@ -255,12 +265,22 @@ class OrderService
     {
         return Order::where('user_id', $user->id)
             ->where('type', '!=', Order::TYPE_SUPPLEMENT)
-            ->whereNotIn('status', [Order::STATUS_PENDING, Order::STATUS_CANCELLED])
+            ->where('status', '!=', Order::STATUS_CANCELLED)
+            ->where(fn ($query) => $query->where('status', '!=', Order::STATUS_PENDING)
+                ->orWhere('commission_balance', '>', 0))
             ->first();
     }
 
     private function getSurplusValue(User $user, Order $order)
     {
+        // A pending upgrade holds the old subscription's credit until paid or cancelled.
+        if (Order::where('user_id', $user->id)
+            ->whereIn('status', [Order::STATUS_PENDING, Order::STATUS_PROCESSING])
+            ->where('surplus_amount', '>', 0)
+            ->exists()) {
+            return;
+        }
+
         if ($user->expired_at === NULL) {
             $lastOneTimeOrder = Order::where('user_id', $user->id)
                 ->where('period', Plan::PERIOD_ONETIME)
@@ -415,8 +435,8 @@ class OrderService
 
     private function buyByPeriod(Order $order, Plan $plan)
     {
-        // change plan process
-        if ((int) $order->type === Order::TYPE_UPGRADE) {
+        $changesPlan = $this->user->plan_id !== null && (int) $this->user->plan_id !== (int) $plan->id;
+        if ($changesPlan && $this->user->expired_at !== null) {
             $this->user->expired_at = time();
         }
         $this->user->transfer_enable = $plan->transfer_enable * 1073741824;
