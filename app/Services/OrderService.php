@@ -96,10 +96,10 @@ class OrderService
                 'plan_id' => $plan->id,
                 'period' => $newPeriod,
                 'trade_no' => Helper::generateOrderNo(),
-                'checkout_token' => $checkoutToken,
                 'total_amount' => (int) (optional($plan->prices)[$newPeriod] * 100),
             ]);
 
+            $order->checkout_token = $checkoutToken;
             $orderService = new self($order);
 
             if ($couponCode) {

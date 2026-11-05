@@ -45,7 +45,7 @@ class Order extends Model
 {
     protected $table = 'v2_order';
     protected $dateFormat = 'U';
-    protected $guarded = ['id'];
+    protected $guarded = ['id', 'checkout_token'];
     protected $hidden = ['checkout_token'];
     protected $casts = [
         'created_at' => 'timestamp',

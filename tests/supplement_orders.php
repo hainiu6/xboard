@@ -104,6 +104,7 @@ $db->schema()->create('v2_payment', function (Blueprint $table) {
 });
 $migration = require dirname(__DIR__) . '/database/migrations/2026_11_05_000000_add_supplement_title_to_orders.php';
 $migration->up();
+(require dirname(__DIR__) . '/database/migrations/2026_11_05_000001_add_checkout_token_to_orders.php')->up();
 
 $plugin = new Plugin('epay');
 $plugin->boot();
@@ -159,7 +160,6 @@ $check($data($users->orderSupplement($request($first), $code)) === $one, 'A comp
 $check($first->refresh()->plan_id === 9 && $first->expired_at === 1234567890 && $first->balance === 0, 'Payment changed user subscription or balance.');
 echo "Reusable product, owner isolation, order retries and signed payment settlement passed.\n";
 
-(require dirname(__DIR__) . '/database/migrations/2026_11_05_000001_add_checkout_token_to_orders.php')->up();
 $oldPlan = Plan::create(['name' => 'Existing plan', 'prices' => [Plan::PERIOD_YEARLY => 50]])->refresh();
 $newPlan = Plan::create(['name' => 'New plan', 'prices' => [Plan::PERIOD_YEARLY => 200]])->refresh();
 $first->update(['plan_id' => $oldPlan->id, 'expired_at' => time() + 3600, 'balance' => 200]);
@@ -172,7 +172,7 @@ $token = 'eb4089c5-9465-4cca-a14c-f80933d77551';
 $upgrade = OrderService::createFromRequest($first, $newPlan, 'year_price', null, $token);
 $retry = OrderService::createFromRequest($first, $newPlan, 'year_price', null, $token);
 $next = OrderService::createFromRequest($first, $newPlan, 'year_price');
-$check($upgrade->id === $retry->id && $upgrade->id !== $next->id, 'An identical retry or a new order was mishandled.');
+$check($upgrade->trade_no === $retry->trade_no && $upgrade->trade_no !== $next->trade_no, 'An identical retry or a new order was mishandled.');
 $check($upgrade->refresh()->status === Order::STATUS_PENDING && $next->refresh()->status === Order::STATUS_PENDING, 'A new checkout changed an earlier order.');
 $check($upgrade->surplus_order_ids === [$previous->id] && $upgrade->surplus_amount > 0 && $next->total_amount === 20000, 'Pending upgrades reused an existing subscription credit.');
 $check($upgrade->balance_amount === 200 && $next->balance_amount === null && $first->refresh()->balance === 0, 'The same balance was reserved twice.');
