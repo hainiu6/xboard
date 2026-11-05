@@ -27,6 +27,7 @@ $app = new Application(dirname(__DIR__));
 Facade::setFacadeApplication($app);
 $db = new Capsule($app);
 $db->addConnection(['driver' => 'sqlite', 'database' => ':memory:']);
+$db->setAsGlobal();
 $db->bootEloquent();
 $app->instance('db', $db->getDatabaseManager());
 $app->bind('db.schema', fn () => $db->schema());
