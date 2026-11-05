@@ -29,6 +29,7 @@ use Plugin\Epay\Plugin;
 
 $app = new Application(dirname(__DIR__));
 Facade::setFacadeApplication($app);
+$app->instance('config', new Repository());
 $db = new Capsule($app);
 $db->addConnection(['driver' => 'sqlite', 'database' => ':memory:']);
 $db->setAsGlobal();
@@ -37,7 +38,6 @@ $app->instance('db', $db->getDatabaseManager());
 $app->bind('db.schema', fn () => $db->schema());
 $app->instance('translator', $translator = new Translator(new ArrayLoader(), 'en'));
 $app->instance('log', new \Psr\Log\NullLogger());
-$app->instance('config', new Repository());
 $app->instance(Setting::class, new class extends Setting {
     public function __construct() {}
     public function get(string $key, mixed $default = null): mixed { return $default; }
