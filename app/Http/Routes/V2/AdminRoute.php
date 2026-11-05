@@ -117,6 +117,8 @@ class AdminRoute
                 $router->any('/fetch', [OrderController::class, 'fetch']);
                 $router->post('/update', [OrderController::class, 'update']);
                 $router->post('/assign', [OrderController::class, 'assign']);
+                $router->post('/supplement', [OrderController::class, 'supplement']);
+                $router->get('/supplement', [OrderController::class, 'supplementProducts']);
                 $router->post('/paid', [OrderController::class, 'paid']);
                 $router->post('/cancel', [OrderController::class, 'cancel']);
                 $router->post('/detail', [OrderController::class, 'detail']);

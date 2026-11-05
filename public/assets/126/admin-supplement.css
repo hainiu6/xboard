@@ -1,0 +1,33 @@
+.supplement-admin-trigger {
+  padding: .4rem .75rem;
+  border-radius: .5rem;
+  background: #0759e8;
+  color: white;
+  font-size: .875rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.supplement-admin-dialog {
+  inset: 0;
+  margin: auto;
+  width: min(29rem, calc(100% - 2rem));
+  max-height: calc(100% - 2rem);
+  padding: 1.5rem;
+  border: 1px solid #c9d6eb;
+  border-radius: 1rem;
+  color: #132641;
+  background: #fff;
+  box-shadow: 0 24px 80px #10264738;
+}
+.supplement-admin-dialog::backdrop { background: #0e193c88; }
+.supplement-admin-dialog h2 { font-size: 1.3rem; font-weight: 750; }
+.supplement-admin-dialog p { margin: .45rem 0 1rem; color: #4a5c73; }
+.supplement-admin-dialog label, .supplement-admin-result { display: grid; gap: .4rem; margin-top: .8rem; }
+.supplement-admin-dialog input { width: 100%; border: 1px solid #bac9df; border-radius: .5rem; padding: .6rem .7rem; }
+.supplement-admin-dialog footer { display: flex; justify-content: flex-end; gap: .6rem; margin-top: 1.25rem; }
+.supplement-admin-dialog button { border: 1px solid #bac9df; border-radius: .5rem; padding: .5rem .8rem; }
+.supplement-admin-dialog .supplement-admin-primary { background: #0759e8; border-color: #0759e8; color: white; }
+.supplement-admin-dialog button:disabled { opacity: .6; }
+.supplement-admin-dialog .supplement-admin-error { color: #9d2525; }
+.supplement-admin-products { display: grid; gap: .5rem; max-height: 10rem; overflow: auto; margin-top: 1rem; }
+.supplement-admin-products button { text-align: left; overflow-wrap: anywhere; }

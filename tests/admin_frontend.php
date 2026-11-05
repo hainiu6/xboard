@@ -15,6 +15,7 @@ $manifest = json_decode(file_get_contents($sourceRoot . '/public/assets/admin/ma
 $entry = $manifest['index.html']['file'];
 $files->copy($sourceRoot . '/public/assets/admin/' . $entry, $root . '/public/assets/admin/' . $entry);
 $files->copy($sourceRoot . '/public/assets/126/admin-notice.js', $root . '/public/assets/126/admin-notice.js');
+$files->copy($sourceRoot . '/public/assets/126/admin-supplement.js', $root . '/public/assets/126/admin-supplement.js');
 $files->copy($sourceRoot . '/resources/ui/admin-notice-bridge.json', $root . '/resources/ui/admin-notice-bridge.json');
 $app = new Application($root);
 try {
@@ -22,7 +23,7 @@ try {
     $service = new AdminFrontendService();
     $url = $service->entry($entry);
     $compiled = file_get_contents(public_path(ltrim($url, '/')));
-    foreach (['name:"display_pages"', 'display_pages:gy(cy()).nullable().optional()', 'renderNoticePages(Q,e)', '/assets/126/admin-notice.js?v=', 'new URL("/assets/admin/' . $entry . '",window.location.origin).href'] as $required) {
+    foreach (['name:"display_pages"', 'display_pages:gy(cy()).nullable().optional()', 'renderNoticePages(Q,e)', '/assets/126/admin-notice.js?v=', 'Q.jsx(SupplementOrderButton', 'jD+"/order/supplement"', 'new URL("/assets/admin/' . $entry . '",window.location.origin).href'] as $required) {
         if (!str_contains($compiled, $required)) throw new RuntimeException('Missing admin integration: ' . $required);
     }
     if (str_contains($compiled, 'import.meta.url')) throw new RuntimeException('Worker asset base was not preserved.');

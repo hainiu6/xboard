@@ -48,6 +48,18 @@ if '/*126_ORDERS*/' in source:
 else:
     replace_once('VK=Object.freeze(Object.defineProperty({__proto__:null,default:UK},Symbol.toStringTag,{value:"Module"}))', 'VK=Object.freeze(Object.defineProperty({__proto__:null,default:'+orders_bridge+'},Symbol.toStringTag,{value:"Module"}))')
 
+# Use distinct Vue components so moving from the product to its order mounts a fresh checkout.
+supplement_setup = 'window.Xboard126.createSupplementPage({h:Lr,ref:Et,onMounted:Dn,onUnmounted:Wn,Layout:Zj,QRCode:h$,api:{get:e=>EN.get(e),post:(e,t)=>EN.post(e,t)},getConfig:()=>_N().appConfig,navigate:e=>qN.push(e),'
+order_setup = 'fX=zn({__name:"detail",setup(e){const t=_N(),n=BN(),o=Yl(),r=e=>jf.global.t(e);'
+replace_once(order_setup+'function i(e){', order_setup+'if(/^SUP[a-f0-9]{29}$/.test(o.params.trade_no))return '+supplement_setup+'tradeNo:o.params.trade_no});function i(e){')
+order_module = 'vX=Object.freeze(Object.defineProperty({__proto__:null,default:fX},Symbol.toStringTag,{value:"Module"})),'
+product_module = 'SupplementProductModule126=Object.freeze(Object.defineProperty({__proto__:null,default:zn({name:"SupplementProduct126",setup(){return '+supplement_setup+'productCode:Yl().params.product_code})}})},Symbol.toStringTag,{value:"Module"})),'
+replace_once(order_module+'mX=', order_module+product_module+'mX=')
+order_route = 'name:"OrderDetail",path:"order/:trade_no",component:()=>Zl((()=>Promise.resolve().then((()=>vX))),void 0),meta:{title:"订单详情",icon:"mdi:doc",order:1,isHidden:!0}}'
+product_route = '{name:"SupplementProduct",path:"supplement/:product_code",component:()=>Zl((()=>Promise.resolve().then((()=>SupplementProductModule126))),void 0),meta:{title:"补差价",isHidden:!0}}'
+replace_once(order_route+']},ss=', order_route+','+product_route+']},ss=')
+replace_once('UN.includes(o.path)?i():i({path:"/login"})', r'UN.includes(o.path)?i():i({path:"/login",query:/^\/(?:supplement\/[a-f0-9]{32}|order\/SUP[a-f0-9]{29})$/.test(o.path)?{redirect:o.path}:{}})')
+
 # The common page layout renders an inline announcement, including on route changes.
 notice_component = 'window.Xboard126&&window.Xboard126.createNotice?(window.Xboard126.Notice||(window.Xboard126.Notice=window.Xboard126.createNotice({h:Lr,ref:Et,onMounted:Dn,onUnmounted:Wn,api:{get:e=>EN.get(e)},getPath:()=>qN.currentRoute.value.path,renderMarkdown:e=>new qV({html:!0,breaks:!0,linkify:!0}).render(e)}))):null'
 replace_once('const o=Yj,r=$E;return _r(),Rr(vi', 'const o=Yj,r=$E,a='+notice_component+';return _r(),Rr(vi')
@@ -74,6 +86,13 @@ for old, new in patches['replacements']:
 admin = admin[:start] + form + admin[end:]
 digest = hashlib.sha256((root / 'public/assets/126/admin-notice.js').read_bytes()).hexdigest()[:12]
 admin = 'import{noticePageField as renderNoticePages}from"/assets/126/admin-notice.js?v='+digest+'";' + admin
+supplement_toolbar = 'children:[Q.jsx(f6t,{refetch:t}),Q.jsx(u8e,{placeholder:n("search.placeholder")'
+if admin.count(supplement_toolbar) != 1:
+    raise SystemExit('Cannot locate the admin order toolbar.')
+supplement_button = 'Q.jsx(SupplementOrderButton,{react:H,submit:e=>RL(jD+"/order/supplement",e),list:()=>IL(jD+"/order/supplement")}),'
+admin = admin.replace(supplement_toolbar, supplement_toolbar.replace('children:[', 'children:['+supplement_button))
+digest = hashlib.sha256((root / 'public/assets/126/admin-supplement.js').read_bytes()).hexdigest()[:12]
+admin = 'import{SupplementOrderButton}from"/assets/126/admin-supplement.js?v='+digest+'";' + admin
 # Worker and lazy asset URLs still resolve relative to the original admin entry.
 admin = admin.replace('import.meta.url', 'new URL('+json.dumps('/assets/admin/'+entry, ensure_ascii=False, separators=(',', ':'))+',window.location.origin).href')
 output = root / 'public/theme/126-admin'

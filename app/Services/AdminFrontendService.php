@@ -12,11 +12,13 @@ class AdminFrontendService
         $sourcePath = public_path('assets/admin/' . $entry);
         $patchPath = resource_path('ui/admin-notice-bridge.json');
         $fieldPath = public_path('assets/126/admin-notice.js');
-        if (!is_file($sourcePath) || !is_file($patchPath) || !is_file($fieldPath)) {
+        $supplementPath = public_path('assets/126/admin-supplement.js');
+        if (!is_file($sourcePath) || !is_file($patchPath) || !is_file($fieldPath) || !is_file($supplementPath)) {
             throw new RuntimeException('公告管理前端文件不完整，请重新更新代码。');
         }
         $key = substr(hash('sha256', hash_file('sha256', $sourcePath)
             . hash_file('sha256', $patchPath) . hash_file('sha256', $fieldPath)
+            . hash_file('sha256', $supplementPath)
             . hash_file('sha256', __FILE__)), 0, 20);
         $url = '/theme/126-admin/admin-app.' . $key . '.js';
         $target = public_path(ltrim($url, '/'));
@@ -39,6 +41,13 @@ class AdminFrontendService
             $form = str_replace($old, $new, $form);
         }
         $source = substr($source, 0, $start) . $form . substr($source, $end);
+        $orderToolbar = 'children:[Q.jsx(f6t,{refetch:t}),Q.jsx(u8e,{placeholder:n("search.placeholder")';
+        if (substr_count($source, $orderToolbar) !== 1) {
+            throw new RuntimeException('后台前端已变化，无法定位订单工具栏。');
+        }
+        $source = str_replace($orderToolbar, str_replace('children:[', 'children:[Q.jsx(SupplementOrderButton,{react:H,submit:e=>RL(jD+"/order/supplement",e),list:()=>IL(jD+"/order/supplement")}),', $orderToolbar), $source);
+        $supplementVersion = substr(hash_file('sha256', $supplementPath), 0, 12);
+        $source = 'import{SupplementOrderButton}from"/assets/126/admin-supplement.js?v=' . $supplementVersion . '";' . $source;
         // Moving the entry must not move its original worker/lazy-asset base URL.
         $originalUrl = json_encode('/assets/admin/' . $entry, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
         $source = str_replace('import.meta.url', 'new URL(' . $originalUrl . ',window.location.origin).href', $source);

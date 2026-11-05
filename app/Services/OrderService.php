@@ -254,6 +254,7 @@ class OrderService
     private function haveValidOrder(User $user): Order|null
     {
         return Order::where('user_id', $user->id)
+            ->where('type', '!=', Order::TYPE_SUPPLEMENT)
             ->whereNotIn('status', [Order::STATUS_PENDING, Order::STATUS_CANCELLED])
             ->first();
     }
@@ -279,6 +280,7 @@ class OrderService
             $result = $trafficUnitPrice * $notUsedTraffic;
             $order->surplus_amount = (int) ($result > 0 ? $result : 0);
             $order->surplus_order_ids = Order::where('user_id', $user->id)
+                ->where('type', '!=', Order::TYPE_SUPPLEMENT)
                 ->where('period', '!=', Plan::PERIOD_RESET_TRAFFIC)
                 ->where('status', Order::STATUS_COMPLETED)
                 ->pluck('id')
@@ -286,6 +288,7 @@ class OrderService
         } else {
             $orders = Order::query()
                 ->where('user_id', $user->id)
+                ->where('type', '!=', Order::TYPE_SUPPLEMENT)
                 ->whereNotIn('period', [Plan::PERIOD_RESET_TRAFFIC, Plan::PERIOD_ONETIME])
                 ->where('status', Order::STATUS_COMPLETED)
                 ->get();
@@ -332,17 +335,22 @@ class OrderService
                     throw new \RuntimeException('Order not found.');
                 }
                 if ((int) $order->status !== Order::STATUS_PENDING) {
+                    if ($order->isSupplement() && (
+                        (int) $order->status !== Order::STATUS_COMPLETED || $order->callback_no !== $callbackNo
+                    )) {
+                        throw new \RuntimeException('Supplement order cannot accept this payment.');
+                    }
                     return [$order, false];
                 }
 
-                $order->status = Order::STATUS_PROCESSING;
+                $order->status = $order->isSupplement() ? Order::STATUS_COMPLETED : Order::STATUS_PROCESSING;
                 $order->paid_at = time();
                 $order->callback_no = $callbackNo;
                 if (!$order->save()) {
                     throw new \RuntimeException('Failed to save order status.');
                 }
 
-                return [$order, true];
+                return [$order, !$order->isSupplement()];
             });
 
             $this->order = $order;
@@ -362,7 +370,7 @@ class OrderService
         try {
             $cancelledOrder = DB::transaction(function () {
                 $order = $this->lockCurrentOrderWhenStatus(Order::STATUS_PENDING);
-                if (!$order) {
+                if (!$order || ($order->isSupplement() && $order->payment_id)) {
                     return null;
                 }
 

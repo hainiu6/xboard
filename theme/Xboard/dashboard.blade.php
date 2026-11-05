@@ -16,6 +16,7 @@
       version: @json($version),
       bundle_version: '{{ filemtime(base_path("theme/Xboard/assets/umi.js")) }}',
       catalog_version: '{{ filemtime(public_path("assets/126/plan-catalog.js")) }}',
+      orders_version: '{{ filemtime(public_path("assets/126/orders.js")) }}',
       background_url: @json($theme_config['background_url'] ?? ''),
       description: @json($description),
       i18n: ['zh-CN', 'en-US', 'ja-JP', 'vi-VN', 'ko-KR', 'zh-TW', 'fa-IR'],

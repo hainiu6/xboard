@@ -5,6 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{{ $title }}</title>
+  <link rel="stylesheet" href="/assets/126/admin-supplement.css?v={{ filemtime(public_path('assets/126/admin-supplement.css')) }}" />
   <script>
     window.settings = {
       base_url: "/",

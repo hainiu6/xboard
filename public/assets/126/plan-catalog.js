@@ -121,7 +121,7 @@ export function createPlansPage({ h, ref, onMounted, onUnmounted, Layout, QRCode
           plans.value = planResponse.data.filter(plan => planOptions(plan).length);
           methods.value = methodResponse.data;
           methodId.value = methods.value[0]?.id ?? null;
-          pending.value = orderResponse.data.find(item => [0, 1].includes(Number(item.status))) || null;
+          pending.value = orderResponse.data.find(item => Number(item.type) !== 5 && [0, 1].includes(Number(item.status))) || null;
           if (!selected.value) {
             const preferred = plans.value.find(plan => planPresentation(plan).recommended && selectionFor(plan, 'year_price'));
             if (preferred) selected.value = selectionFor(preferred, 'year_price');
@@ -200,7 +200,7 @@ export function createPlansPage({ h, ref, onMounted, onUnmounted, Layout, QRCode
             if (couponInput.value.trim() && coupon.value?.code !== couponInput.value.trim() && !await validateCoupon()) return;
             const currentOrders = await api.get('/user/order/fetch');
             if (!Array.isArray(currentOrders.data)) throw new Error('无法核对订单状态，请重试。');
-            const existing = currentOrders.data.find(item => [0, 1].includes(Number(item.status)));
+            const existing = currentOrders.data.find(item => Number(item.type) !== 5 && [0, 1].includes(Number(item.status)));
             if (existing) { pending.value = existing; throw new Error(Number(existing.status) === 1 ? '已有订单正在处理，请等待开通。' : '你有待支付订单，请先在本页继续付款或取消该订单。'); }
             const user = getUser() || {};
             if (user.plan_id && String(user.plan_id) !== String(selected.value.plan.id) && (!user.expired_at || Number(user.expired_at) >= Date.now() / 1000)

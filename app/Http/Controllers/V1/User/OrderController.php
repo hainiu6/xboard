@@ -9,12 +9,14 @@ use App\Http\Resources\OrderResource;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Plan;
+use App\Models\SupplementProduct;
 use App\Models\User;
 use App\Services\CouponService;
 use App\Services\OrderService;
 use App\Services\PaymentService;
 use App\Services\PlanService;
 use App\Services\UserService;
+use App\Utils\Helper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -49,13 +51,47 @@ class OrderController extends Controller
             return $this->fail([400, __('Order does not exist or has been paid')]);
         }
         $order['try_out_plan_id'] = (int) admin_setting('try_out_plan_id');
-        if (!$order->plan) {
+        if (!$order->plan && !$order->isSupplement()) {
             return $this->fail([400, __('Subscription plan does not exist')]);
         }
         if ($order->surplus_order_ids) {
             $order['surplus_orders'] = Order::whereIn('id', $order->surplus_order_ids)->get();
         }
         return $this->success(OrderResource::make($order));
+    }
+
+    public function supplementProduct(Request $request, string $code)
+    {
+        $product = SupplementProduct::where('code', $code)->firstOrFail();
+        $order = $product->currentOrder($request->user()->id);
+        return $this->success([
+            'title' => $product->title,
+            'amount' => $product->amount,
+            'trade_no' => $order?->trade_no,
+            'status' => $order?->status,
+        ]);
+    }
+
+    public function orderSupplement(Request $request, string $code)
+    {
+        $product = SupplementProduct::where('code', $code)->firstOrFail();
+        $order = DB::transaction(function () use ($request, $product) {
+            $user = User::lockForUpdate()->findOrFail($request->user()->id);
+            if ($user->banned) {
+                throw new ApiException('此账号已停用，暂时无法下单', 403);
+            }
+            return $product->currentOrder($user->id) ?? $product->orders()->create([
+                'user_id' => $user->id,
+                'plan_id' => 0,
+                'period' => Order::PERIOD_SUPPLEMENT,
+                'type' => Order::TYPE_SUPPLEMENT,
+                'status' => Order::STATUS_PENDING,
+                'trade_no' => 'SUP' . substr(Helper::guid(), 0, 29),
+                'total_amount' => $product->amount,
+                'supplement_title' => $product->title,
+            ]);
+        });
+        return $this->success($order->trade_no);
     }
 
     public function save(OrderSave $request)
@@ -126,7 +162,7 @@ class OrderController extends Controller
         if (!$order) {
             return $this->fail([400, __('Order does not exist or has been paid')]);
         }
-        if ($order->total_amount < 0) {
+        if ($order->total_amount < 0 || ($order->isSupplement() && (int) $order->total_amount === 0)) {
             return $this->fail([400, __('Order amount is invalid')]);
         }
         // free process
@@ -143,14 +179,43 @@ class OrderController extends Controller
         if (!$payment || !$payment->enable) {
             return $this->fail([400, __('Payment method is not available')]);
         }
+        if ($order->isSupplement() && $request->user()->banned) {
+            return $this->fail([403, '此账号已停用，暂时无法付款']);
+        }
+        if ($order->isSupplement() && !in_array($payment->payment, PaymentService::SUPPLEMENT_METHODS, true)) {
+            return $this->fail([422, '该支付方式暂不支持补差价订单']);
+        }
         $paymentService = new PaymentService($payment->payment, $payment->id);
         $order->handling_amount = NULL;
         if ($payment->handling_fee_fixed || $payment->handling_fee_percent) {
             $order->handling_amount = (int) round(($order->total_amount * ($payment->handling_fee_percent / 100)) + $payment->handling_fee_fixed);
         }
         $order->payment_id = $method;
-        if (!$order->save())
+        if ($order->isSupplement()) {
+            DB::transaction(function () use ($order, $payment) {
+                $current = Order::lockForUpdate()->findOrFail($order->id);
+                if ((int) $current->status !== Order::STATUS_PENDING) {
+                    throw new ApiException('这笔补差价订单已支付或已取消');
+                }
+                if ($current->payment_id && (int) $current->payment_id !== (int) $payment->id) {
+                    throw new ApiException('请使用首次选择的支付方式继续付款');
+                }
+                if ($current->payment_id) {
+                    $order->handling_amount = $current->handling_amount;
+                    return;
+                }
+                if ($current->total_amount + (int) $order->handling_amount < 1) {
+                    throw new ApiException('补差价应付金额必须大于零');
+                }
+                $current->payment_id = $payment->id;
+                $current->handling_amount = $order->handling_amount;
+                if (!$current->save()) {
+                    throw new ApiException('暂时无法发起付款，请重试');
+                }
+            });
+        } elseif (!$order->save()) {
             return $this->fail([400, __('Request failed, please try again later')]);
+        }
         $result = $paymentService->pay([
             'trade_no' => $tradeNo,
             'total_amount' => isset($order->handling_amount) ? ($order->total_amount + $order->handling_amount) : $order->total_amount,
@@ -175,7 +240,7 @@ class OrderController extends Controller
         return $this->success($order->status);
     }
 
-    public function getPaymentMethod()
+    public function getPaymentMethod(Request $request)
     {
         $methods = Payment::select([
             'id',
@@ -186,6 +251,7 @@ class OrderController extends Controller
             'handling_fee_percent'
         ])
             ->where('enable', 1)
+            ->when($request->boolean('supplement'), fn ($query) => $query->whereIn('payment', PaymentService::SUPPLEMENT_METHODS))
             ->orderBy('sort', 'ASC')
             ->get();
 

@@ -44,6 +44,7 @@ class CheckOrder extends Command
     public function handle()
     {
         Order::whereIn('status', [Order::STATUS_PENDING, Order::STATUS_PROCESSING])
+            ->where('type', '!=', Order::TYPE_SUPPLEMENT)
             ->orderBy('created_at', 'ASC')
             ->lazyById(200)
             ->each(function ($order) {

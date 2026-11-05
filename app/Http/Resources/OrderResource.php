@@ -22,7 +22,9 @@ class OrderResource extends JsonResource
         return [
             ...parent::toArray($request),
             'period' => PlanService::getLegacyPeriod((string)$this->period),
-            'plan' => $this->whenLoaded('plan', fn() => PlanResource::make($this->plan)),
+            'plan' => $this->isSupplement()
+                ? ['id' => 0, 'name' => $this->supplement_title, 'transfer_enable' => 0]
+                : $this->whenLoaded('plan', fn() => PlanResource::make($this->plan)),
             'payment' => $this->whenLoaded('payment', fn() => $this->payment ? [
                 'id' => $this->payment->id,
                 'name' => $this->payment->name,

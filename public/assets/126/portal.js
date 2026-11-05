@@ -31,10 +31,10 @@ async function syncSurface() {
       const version = encodeURIComponent(window.settings.version);
       const [catalog, orders, notices] = await Promise.all([
         import(`/assets/126/plan-catalog.js?v=${window.settings.catalog_version}&release=${version}`),
-        import(`/assets/126/orders.js?release=${version}`),
+        import(`/assets/126/orders.js?v=${window.settings.orders_version}&release=${version}`),
         import(`/assets/126/notices.js?release=${version}`),
       ]);
-      window.Xboard126 = { createPlansPage: catalog.createPlansPage, createOrdersPage: orders.createOrdersPage, createNotice: notices.createNotice };
+      window.Xboard126 = { createPlansPage: catalog.createPlansPage, createOrdersPage: orders.createOrdersPage, createSupplementPage: orders.createSupplementPage, createNotice: notices.createNotice };
     } catch (error) {
       console.warn('The plan catalog enhancement is unavailable; using the original page.', error);
     }

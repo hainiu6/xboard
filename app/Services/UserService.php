@@ -106,6 +106,7 @@ class UserService
     public function isNotCompleteOrderByUserId(int $userId): bool
     {
         $order = Order::whereIn('status', [0, 1])
+            ->where('type', '!=', Order::TYPE_SUPPLEMENT)
             ->where('user_id', $userId)
             ->first();
         if (!$order) {

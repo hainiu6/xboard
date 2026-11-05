@@ -38,6 +38,8 @@ class UserRoute
             $router->post('/removeActiveSession', [UserController::class, 'removeActiveSession']);
             // Order
             $router->post('/order/save', [OrderController::class, 'save']);
+            $router->get('/order/supplement/{code}', [OrderController::class, 'supplementProduct'])->where('code', '[a-f0-9]{32}');
+            $router->post('/order/supplement/{code}', [OrderController::class, 'orderSupplement'])->where('code', '[a-f0-9]{32}');
             $router->post('/order/checkout', [OrderController::class, 'checkout']);
             $router->get('/order/check', [OrderController::class, 'check']);
             $router->get('/order/detail', [OrderController::class, 'detail']);

@@ -4,7 +4,7 @@ export function orderStatus(value) {
   return ({ 0: ['待支付', 'pending'], 1: ['开通中', 'processing'], 2: ['已取消', 'cancelled'], 3: ['已完成', 'paid'], 4: ['已折抵', 'converted'] })[Number(value)] || ['未知状态', 'unknown'];
 }
 export function orderPeriod(value) {
-  return periods.find(item => item[0] === value)?.[1] || ({ reset_price: '流量重置' })[value] || String(value || '—');
+  return periods.find(item => item[0] === value)?.[1] || ({ reset_price: '流量重置', supplement: '补差价' })[value] || String(value || '—');
 }
 export function orderDate(value) {
   const date = new Date(Number(value) * 1000);
@@ -54,8 +54,8 @@ export function createOrdersPage({ h, ref, onMounted, Layout, api, getConfig, na
           h('div', { class: 'orders-state' }, [h('span', { class: ['order-status', `is-${state}`] }, label)]),
           h('time', { class: 'orders-date', 'data-label': '创建时间' }, orderDate(order.created_at)),
           h('div', { class: 'orders-actions' }, [
-            Number(order.status) === 0 ? h('button', { type: 'button', class: 'orders-pay', disabled: Boolean(busy.value), onClick: () => navigate(`/plan?trade_no=${encodeURIComponent(order.trade_no)}`) }, '继续付款') : h('button', { type: 'button', class: 'orders-detail', onClick: () => navigate(`/order/${encodeURIComponent(order.trade_no)}`) }, '查看详情'),
-            Number(order.status) === 0 ? h('button', { type: 'button', class: 'orders-cancel', disabled: Boolean(busy.value), onClick: () => cancel(order) }, busy.value === order.trade_no ? '取消中…' : '取消订单') : null,
+            Number(order.status) === 0 ? h('button', { type: 'button', class: 'orders-pay', disabled: Boolean(busy.value), onClick: () => navigate(Number(order.type) === 5 ? `/order/${encodeURIComponent(order.trade_no)}` : `/plan?trade_no=${encodeURIComponent(order.trade_no)}`) }, '继续付款') : h('button', { type: 'button', class: 'orders-detail', onClick: () => navigate(`/order/${encodeURIComponent(order.trade_no)}`) }, '查看详情'),
+            Number(order.status) === 0 && !(Number(order.type) === 5 && order.payment_id) ? h('button', { type: 'button', class: 'orders-cancel', disabled: Boolean(busy.value), onClick: () => cancel(order) }, busy.value === order.trade_no ? '取消中…' : '取消订单') : null,
           ]),
         ]);
       };
@@ -75,4 +75,99 @@ export function createOrdersPage({ h, ref, onMounted, Layout, api, getConfig, na
       };
     },
   };
+}
+
+export function createSupplementPage({ h, ref, onMounted, onUnmounted, Layout, QRCode, api, getConfig, navigate, productCode, tradeNo }) {
+  const record = ref(null), methods = ref([]), choice = ref(null), error = ref('');
+  const busy = ref(false), loading = ref(false), qr = ref('');
+  const productPath = '/user/order/supplement/' + encodeURIComponent(productCode || '');
+  const orderPath = '/user/order/detail?trade_no=' + encodeURIComponent(tradeNo || '');
+  const price = cents => (getConfig().currency_symbol || '¥') + money(cents, 2);
+  let poll;
+  let disposed = false;
+
+  async function load() {
+    if (disposed || busy.value || loading.value) return;
+    loading.value = true;
+    error.value = '';
+    try {
+      const { data } = await api.get(productCode ? productPath : orderPath);
+      if (!data || (!productCode && Number(data.type) !== 5)) throw new Error('找不到这笔补差价订单');
+      record.value = data;
+      if (tradeNo && Number(data.status) === 0) {
+        const response = await api.get('/user/order/getPaymentMethod?supplement=1');
+        methods.value = response.data.filter(method => !data.payment_id || Number(method.id) === Number(data.payment_id));
+        choice.value = methods.value.find(method => Number(method.id) === Number(choice.value))?.id ?? methods.value[0]?.id ?? null;
+      } else {
+        qr.value = '';
+        clearInterval(poll);
+      }
+    } catch (failure) { error.value = failure.message || '暂时无法读取补差价信息'; }
+    finally { loading.value = false; }
+  }
+
+  onMounted(load);
+  onUnmounted(() => { disposed = true; clearInterval(poll); });
+
+  const selected = () => methods.value.find(method => Number(method.id) === Number(choice.value));
+  const fee = () => {
+    if (record.value.payment_id) return Number(record.value.handling_amount || 0);
+    const method = selected();
+    return Math.round(Number(record.value.total_amount) * Number(method?.handling_fee_percent || 0) / 100 + Number(method?.handling_fee_fixed || 0));
+  };
+
+  async function submit() {
+    if (busy.value || loading.value) return;
+    busy.value = true;
+    error.value = '';
+    try {
+      if (productCode) {
+        const order = record.value.trade_no || (await api.post(productPath, {})).data;
+        if (!/^SUP[a-f0-9]{29}$/.test(order)) throw new Error('暂时无法创建订单，请重试');
+        await navigate('/order/' + order);
+        return;
+      }
+      if (!selected()) return;
+      const payment = await api.post('/user/order/checkout', { trade_no: tradeNo, method: choice.value });
+      if (disposed) return;
+      if (payment.type === 0 && typeof payment.data === 'string' && payment.data) {
+        qr.value = payment.data;
+        clearInterval(poll);
+        if (!disposed) poll = setInterval(async () => {
+          try {
+            const response = await api.get('/user/order/check?trade_no=' + encodeURIComponent(tradeNo));
+            if (Number(response.data) !== 0) await load();
+          } catch {}
+        }, 3000);
+      } else if (payment.type === 1 && typeof payment.data === 'string') {
+        const destination = new URL(payment.data, location.origin);
+        if (!['https:', 'http:'].includes(destination.protocol)) throw new Error('支付链接格式有误');
+        location.assign(destination.href);
+      } else {
+        throw new Error('未获取到付款信息，请重试');
+      }
+    } catch (failure) { error.value = failure.message || '暂时无法发起付款'; }
+    finally { busy.value = false; }
+  }
+
+  return () => h(Layout, {}, { default: () => h('section', { class: 'supplement-checkout', 'aria-labelledby': 'supplement-heading' }, [
+    h('p', { class: 'supplement-label' }, '补差价 · 单次付款'),
+    h('h1', { id: 'supplement-heading' }, record.value?.supplement_title || record.value?.title || '补差价'),
+    loading.value ? h('p', { role: 'status' }, '正在加载…') : null,
+    error.value ? h('p', { class: 'supplement-error', role: 'alert' }, error.value) : null,
+    record.value && !loading.value ? [
+      tradeNo ? h('p', { class: 'supplement-trade' }, '订单号 ' + tradeNo) : null,
+      h('strong', { class: 'supplement-price' }, price(record.value.amount ?? record.value.total_amount)),
+      productCode ? h('button', { class: 'supplement-pay', disabled: busy.value, onClick: submit }, busy.value ? '正在处理…' : Number(record.value.status) === 3 ? '查看已支付订单' : record.value.trade_no ? '继续付款' : '下单付款') : null,
+      tradeNo && Number(record.value.status) === 3 ? h('p', { class: 'supplement-success', role: 'status' }, '付款成功') : null,
+      tradeNo && Number(record.value.status) === 2 ? h('p', { role: 'status' }, '订单已取消，请重新打开套餐链接下单。') : null,
+      tradeNo && Number(record.value.status) === 0 ? [
+        methods.value.length ? h('label', {}, ['支付方式', h('select', { value: choice.value, disabled: busy.value || Boolean(record.value.payment_id) || Boolean(qr.value), onChange: event => { choice.value = Number(event.target.value); } }, methods.value.map(method => h('option', { value: method.id }, method.name)))]) : h('p', {}, '暂无可用的补差价支付方式，请联系管理员。'),
+        fee() > 0 ? h('p', {}, '含手续费 ' + price(fee()) + '，应付 ' + price(Number(record.value.total_amount) + fee())) : null,
+        qr.value ? h('div', { class: 'supplement-qr' }, [h(QRCode, { value: qr.value, size: 220 }), h('p', {}, '请扫码付款，页面将更新支付结果。')]) :
+          h('button', { class: 'supplement-pay', disabled: busy.value || !selected(), onClick: submit }, busy.value ? '正在前往收银台…' : '立即付款'),
+      ] : null,
+    ] : null,
+    tradeNo || error.value ? h('button', { class: 'supplement-refresh', disabled: loading.value || busy.value, onClick: load }, '刷新状态') : null,
+  ]) });
 }

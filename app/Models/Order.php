@@ -71,12 +71,20 @@ class Order extends Model
     const TYPE_RENEWAL = 2; // 续费
     const TYPE_UPGRADE = 3; // 升级
     const TYPE_RESET_TRAFFIC = 4; //流量重置包
+    const TYPE_SUPPLEMENT = 5;
+    const PERIOD_SUPPLEMENT = 'supplement';
     public static $typeMap = [
         self::TYPE_NEW_PURCHASE => '新购',
         self::TYPE_RENEWAL => '续费',
         self::TYPE_UPGRADE => '升级',
         self::TYPE_RESET_TRAFFIC => '流量重置',
+        self::TYPE_SUPPLEMENT => '补差价',
     ];
+
+    public function isSupplement(): bool
+    {
+        return (int) $this->type === self::TYPE_SUPPLEMENT;
+    }
 
     /**
      * 获取与订单关联的支付方式

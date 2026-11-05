@@ -36,3 +36,5 @@ jobs:
         run: php tests/notice_pages.php
       - name: Versioned admin frontend generation
         run: php tests/admin_frontend.php
+      - name: Reusable supplement orders and payment settlement
+        run: php tests/supplement_orders.php

@@ -6,9 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\OrderAssign;
 use App\Http\Requests\Admin\OrderUpdate;
 use App\Models\Order;
+use App\Models\Payment;
 use App\Models\Plan;
+use App\Models\SupplementProduct;
 use App\Models\User;
 use App\Services\OrderService;
+use App\Services\PaymentService;
 use App\Services\PlanService;
 use App\Services\UserService;
 use App\Utils\Helper;
@@ -29,6 +32,9 @@ class OrderController extends Controller
             $order['surplus_orders'] = Order::whereIn('id', $order->surplus_order_ids)->get();
         }
         $order['period'] = PlanService::getLegacyPeriod((string) $order->period);
+        if ($order->isSupplement()) {
+            $order->setRelation('plan', new Plan(['name' => $order->supplement_title]));
+        }
         return $this->success($order);
     }
 
@@ -57,6 +63,9 @@ class OrderController extends Controller
         $paginatedResults->getCollection()->transform(function ($order) {
             $orderArray = $order->toArray();
             $orderArray['period'] = PlanService::getLegacyPeriod((string) $order->period);
+            if ($order->isSupplement()) {
+                $orderArray['plan'] = ['id' => 0, 'name' => $order->supplement_title];
+            }
             return $orderArray;
         });
 
@@ -194,6 +203,41 @@ class OrderController extends Controller
         }
 
         return $this->success(true);
+    }
+
+    public function supplement(Request $request)
+    {
+        $data = $request->validate([
+            'title' => 'required|string|max:100',
+            'amount' => ['required', 'string', 'regex:/\A(?:0|[1-9][0-9]{0,5})(?:\.[0-9]{1,2})?\z/'],
+        ]);
+        [$units, $fraction] = array_pad(explode('.', $data['amount'], 2), 2, '');
+        $amount = (int) $units * 100 + (int) str_pad($fraction, 2, '0');
+        if ($amount < 1) {
+            return $this->fail([422, '补差价金额至少为 0.01']);
+        }
+        if (!Payment::where('enable', 1)->whereIn('payment', PaymentService::SUPPLEMENT_METHODS)->exists()) {
+            return $this->fail([422, '请先启用易支付或支付宝当面付']);
+        }
+
+        $product = SupplementProduct::create([
+            'code' => Helper::guid(),
+            'title' => $data['title'],
+            'amount' => $amount,
+        ]);
+
+        return $this->success($this->supplementLink($product));
+    }
+
+    public function supplementProducts()
+    {
+        return $this->success(SupplementProduct::latest('id')->get()
+            ->map(fn (SupplementProduct $product) => $this->supplementLink($product)));
+    }
+
+    private function supplementLink(SupplementProduct $product): array
+    {
+        return ['title' => $product->title, 'amount' => $product->amount, 'payment_path' => $product->paymentPath()];
     }
 
     public function assign(OrderAssign $request)

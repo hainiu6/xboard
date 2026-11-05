@@ -9,6 +9,9 @@ use App\Services\Plugin\HookManager;
 
 class PaymentService
 {
+    // Supplemental orders require a verifier that reports the signed paid amount.
+    public const SUPPLEMENT_METHODS = ['EPay', 'AlipayF2F'];
+
     public $method;
     protected $config;
     protected $payment;
@@ -77,6 +80,11 @@ class PaymentService
         if (!$this->config['enable'])
             throw new ApiException('gate is not enable');
         return $this->payment->notify($params);
+    }
+
+    public function paymentId(): int
+    {
+        return (int) $this->config['id'];
     }
 
     public function pay($order)
