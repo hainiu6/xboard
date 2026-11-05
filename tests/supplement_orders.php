@@ -160,8 +160,8 @@ $check($first->refresh()->plan_id === 9 && $first->expired_at === 1234567890 && 
 echo "Reusable product, owner isolation, order retries and signed payment settlement passed.\n";
 
 (require dirname(__DIR__) . '/database/migrations/2026_11_05_000001_add_checkout_token_to_orders.php')->up();
-$oldPlan = Plan::create(['name' => 'Existing plan', 'prices' => [Plan::PERIOD_YEARLY => 50]]);
-$newPlan = Plan::create(['name' => 'New plan', 'prices' => [Plan::PERIOD_YEARLY => 200]]);
+$oldPlan = Plan::create(['name' => 'Existing plan', 'prices' => [Plan::PERIOD_YEARLY => 50]])->refresh();
+$newPlan = Plan::create(['name' => 'New plan', 'prices' => [Plan::PERIOD_YEARLY => 200]])->refresh();
 $first->update(['plan_id' => $oldPlan->id, 'expired_at' => time() + 3600, 'balance' => 200]);
 $previous = Order::create([
     'user_id' => $first->id, 'plan_id' => $oldPlan->id, 'period' => Plan::PERIOD_YEARLY,
